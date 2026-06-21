@@ -1,13 +1,8 @@
 import React from 'react'
-import { createService } from 'headlo'
-import { useComponent } from 'headlo-react'
-
-const propKey = import.meta.env.VITE_HEADLO_PROP_KEY as string
-const propUrl = import.meta.env.VITE_HEADLO_API_URL  as string
-
-const prop = createService({ publishableKey: propKey, url: propUrl })
+import { useComponent, usePropService } from 'headlo-react'
 
 export default function PropCard() {
+  const prop = usePropService()
   const { loaded, error } = useComponent('headlo-auth-button')
   const [result, setResult]   = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(false)
