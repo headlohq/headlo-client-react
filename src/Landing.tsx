@@ -1,4 +1,4 @@
-import { useAuth, useUser, SignInButton } from 'headlo-auth'
+import { useAuth, useUser } from 'headlo-auth'
 
 export default function Landing() {
   const { isLoaded, isSignedIn } = useAuth()
@@ -27,7 +27,7 @@ export default function Landing() {
           ) : isSignedIn ? (
             <a href="/dashboard" style={s.cta}>Dashboard →</a>
           ) : (
-            <SignInButton style={s.cta as React.CSSProperties}>Sign in →</SignInButton>
+            <a href="/onboarding" style={s.cta}>Sign in →</a>
           )}
         </div>
       </nav>
