@@ -4,16 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev":   "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "dev":         "vite",
+    "dev:staging": "vite --mode staging",
+    "build":       "tsc && vite build",
+    "preview":     "vite preview"
   },
   "dependencies": {
-    "headlo":       "file:../headlo-sdk",
-    "headlo-auth":  "file:../headlo-auth",
-    "headlo-react": "file:../headlo-react",
-    "react":        "^19.0.0",
-    "react-dom":    "^19.0.0"
+    "@clerk/clerk-react": "^5.0.0",
+    "headlo":             "file:../headlo-sdk",
+    "headlo-auth":        "file:../headlo-auth",
+    "headlo-react":       "file:../headlo-react",
+    "react":              "^19.0.0",
+    "react-dom":          "^19.0.0"
   },
   "devDependencies": {
     "@types/react":        "^19.0.0",

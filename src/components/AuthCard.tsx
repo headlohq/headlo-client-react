@@ -1,9 +1,9 @@
 import React from 'react'
-import { useHeadloAuth, useHeadloUser, SignInButton, SignOutButton } from 'headlo-auth'
+import { useAuth, useUser, SignInButton, SignOutButton } from 'headlo-auth'
 
 export default function AuthCard() {
-  const { isLoaded, isSignedIn, getToken } = useHeadloAuth()
-  const user = useHeadloUser()
+  const { isLoaded, isSignedIn, getToken } = useAuth()
+  const user = useUser()
   const [token, setToken] = React.useState<string | null>(null)
 
   if (!isLoaded) return <div style={s.card}><span style={s.muted}>Loading…</span></div>
