@@ -1,68 +1,27 @@
 {
-  "name": "headlo-react",
-  "version": "1.0.14",
-  "description": "Headlo React SDK",
-  "license": "Elastic-2.0",
-  "homepage": "https://www.headlo.com",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/headlohq/headlo-react"
-  },
-  "keywords": [
-    "headless-cms",
-    "cms",
-    "content",
-    "react",
-    "hooks",
-    "ai-agent",
-    "ai-native",
-    "framework-agnostic",
-    "nextjs",
-    "remix",
-    "vite",
-    "useCollection",
-    "headlo",
-    "collections"
-  ],
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    },
-    "./styles.css": "./src/styles.css"
-  },
-  "files": [
-    "dist",
-    "src/styles.css"
-  ],
+  "name": "headlo-client-react",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "tsc": "tsc --noEmit"
+    "dev":         "vite",
+    "dev:staging": "vite --mode staging",
+    "build":       "tsc && vite build",
+    "preview":     "vite preview"
   },
   "dependencies": {
-    "headlo": "^1.0.11",
-    "sucrase": "^3.35.0"
-  },
-  "peerDependencies": {
-    "react": ">=18",
-    "@clerk/clerk-react": ">=5"
-  },
-  "peerDependenciesMeta": {
-    "@clerk/clerk-react": {
-      "optional": true
-    }
+    "@clerk/clerk-react": "^5.0.0",
+    "headlo":             "file:../headlo-sdk",
+    "headlo-auth":        "file:../headlo-auth",
+    "headlo-react":       "file:../headlo-react",
+    "react":              "^19.0.0",
+    "react-dom":          "^19.0.0"
   },
   "devDependencies": {
-    "@clerk/clerk-react": "^5.61.5",
-    "headlo": "file:../headlo-sdk",
-    "@types/react": "^19.2.14",
-    "react": "^19.2.5",
-    "tsup": "^8.5.1",
-    "typescript": "^6.0.3"
+    "@types/react":        "^19.0.0",
+    "@types/react-dom":    "^19.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "typescript":          "^5.0.0",
+    "vite":                "^6.0.0"
   }
 }
