@@ -1,5 +1,6 @@
-import { HeadloProvider, useAuth } from 'headlo-auth'
-import { PropServer, PropPreload } from 'headlo-react'
+import { HeadloProvider, useAuth as useHeadloAuth } from 'headlo-auth'
+import { useAuth as useClerkAuth } from '@clerk/clerk-react'
+import { PropServer, PropPreload, SiteProvider, MultiAuthBridge } from 'headlo-react'
 import React from 'react'
 
 import Landing from './Landing'
@@ -14,6 +15,7 @@ import MultiAuthOnboarding from './MultiAuthOnboarding'
 const authIssuer     = import.meta.env.VITE_HEADLO_AUTH_ISSUER     as string
 const publishableKey = import.meta.env.VITE_HEADLO_PUBLISHABLE_KEY as string
 const apiUrl         = import.meta.env.VITE_HEADLO_API_URL         as string
+const anonKey        = import.meta.env.VITE_HEADLO_ANON_KEY        as string | undefined
 
 export default function App() {
   const path = window.location.pathname
@@ -25,7 +27,10 @@ export default function App() {
       : <ClerkDashboard />
   }
 
-  // headlo-auth variant — Router runs inside the provider so it can read auth state
+  // headlo-auth variant — Router runs inside the provider so it can read auth state.
+  // MultiAuthBridge sits between HeadloProvider and PropServer so that data hooks
+  // (useCollection, useRecord, useList) automatically pick up a token from whichever
+  // auth provider is currently active — headlo-auth wins by priority, Clerk is fallback.
   return (
     <HeadloProvider
       publishableKey={publishableKey}
@@ -33,21 +38,49 @@ export default function App() {
       signInFallbackRedirectUrl="/dashboard"
       signUpFallbackRedirectUrl="/dashboard"
     >
-      <PropServer publishableKey={publishableKey} url={apiUrl}>
-        <PropPreload
-          dist={[{ runtime: 'react', version: '19' }]}
-          components={['headlo-auth-button']}
-        />
-        <HeadloRouter />
-      </PropServer>
+      <AppMultiAuthBridge>
+        <SiteProvider anonKey={anonKey} apiUrl={apiUrl}>
+          <PropServer publishableKey={publishableKey} url={apiUrl}>
+            <PropPreload
+              dist={[{ runtime: 'react', version: '19' }]}
+              components={['headlo-auth-button']}
+            />
+            <HeadloRouter />
+          </PropServer>
+        </SiteProvider>
+      </AppMultiAuthBridge>
     </HeadloProvider>
+  )
+}
+
+// AppMultiAuthBridge — adapts headlo-auth + Clerk hooks into the SDK's
+// generic <MultiAuthBridge sources={...}> primitive. Priority headlo > clerk.
+//
+// Usage downstream is now zero-arg (anonKey from SiteProvider, getToken from
+// this bridge via HeadloAuthContext, both via React context):
+//
+//   const { records } = useCollection('posts')
+//
+// Explicit args still work and take priority if passed.
+function AppMultiAuthBridge({ children }: { children: React.ReactNode }) {
+  const headlo = useHeadloAuth()
+  const clerk  = useClerkAuth()
+  return (
+    <MultiAuthBridge
+      sources={[
+        { name: 'headlo', isLoaded: headlo.isLoaded, isSignedIn: headlo.isSignedIn, getToken: () => headlo.getToken() },
+        { name: 'clerk',  isLoaded: clerk.isLoaded,  isSignedIn: !!clerk.isSignedIn, getToken: async () => clerk.getToken() },
+      ]}
+    >
+      {children}
+    </MultiAuthBridge>
   )
 }
 
 // Routes inside the headlo-auth provider tree.
 // /dashboard is protected — must be signed in or we redirect to /onboarding.
 function HeadloRouter() {
-  const { isLoaded, isSignedIn } = useAuth()
+  const { isLoaded, isSignedIn } = useHeadloAuth()
   const path = window.location.pathname
 
   // Protected route: /dashboard

@@ -49,9 +49,13 @@ export default function PropCard() {
       {/* Mounted custom element */}
       {loaded && (
         <div style={s.preview}>
-          <div style={s.label}>Live element</div>
+          <div style={s.label}>Live element (default — returns to current page)</div>
           {/* @ts-ignore — custom element not in JSX types */}
           <headlo-auth-button style={{ marginTop: 8, display: 'block' }} />
+
+          <div style={{ ...s.label, marginTop: 16 }}>Live element (return-url="/dashboard")</div>
+          {/* @ts-ignore — custom element not in JSX types */}
+          <headlo-auth-button return-url="/dashboard" style={{ marginTop: 8, display: 'block' }} />
         </div>
       )}
 

@@ -1,5 +1,6 @@
 import AuthCard from './components/AuthCard'
 import PropCard from './components/PropCard'
+import CollectionCard from './components/CollectionCard'
 
 export default function TestPage() {
   return (
@@ -23,6 +24,7 @@ export default function TestPage() {
       <main style={{ maxWidth: 640, margin: '40px auto', padding: '0 24px' }}>
         <AuthCard />
         <PropCard />
+        <CollectionCard />
       </main>
     </div>
   )
