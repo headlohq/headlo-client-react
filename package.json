@@ -4,10 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev":         "vite",
-    "dev:staging": "vite --mode staging",
-    "build":       "tsc && vite build",
-    "preview":     "vite preview"
+    "dev":            "vite",
+    "dev:staging":    "vite --mode staging",
+    "build":          "tsc && vite build",
+    "preview":        "vite preview",
+    "deploy":         "npm run build --prefix ../headlo-auth && npm run build && wrangler pages deploy dist --branch=main --commit-dirty=true",
+    "deploy:preview": "npm run build --prefix ../headlo-auth && npm run build && wrangler pages deploy dist --commit-dirty=true"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.0.0",

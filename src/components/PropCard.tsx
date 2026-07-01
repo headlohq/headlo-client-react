@@ -46,18 +46,17 @@ export default function PropCard() {
         </span>
       </div>
 
-      {/* Mounted custom element */}
-      {loaded && (
-        <div style={s.preview}>
-          <div style={s.label}>Live element (default — returns to current page)</div>
-          {/* @ts-ignore — custom element not in JSX types */}
-          <headlo-auth-button style={{ marginTop: 8, display: 'block' }} />
+      {/* Mounted custom element — container renders unconditionally so the
+          surrounding page doesn't shift when the bundle registers the tag.
+          Default layout dimensions are reserved by <PropPreload>, so callers
+          just use the tag with no min-width/min-height boilerplate. */}
+      <div style={s.preview}>
+        <div style={s.label}>Live element (default — returns to current page)</div>
+        <headlo-auth-button style={{ marginTop: 8 }} />
 
-          <div style={{ ...s.label, marginTop: 16 }}>Live element (return-url="/dashboard")</div>
-          {/* @ts-ignore — custom element not in JSX types */}
-          <headlo-auth-button return-url="/dashboard" style={{ marginTop: 8, display: 'block' }} />
-        </div>
-      )}
+        <div style={{ ...s.label, marginTop: 16 }}>Live element (return-url="/dashboard")</div>
+        <headlo-auth-button return-url="/dashboard" style={{ marginTop: 8 }} />
+      </div>
 
       {/* API buttons */}
       <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
