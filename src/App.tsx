@@ -7,6 +7,9 @@ import Landing from './Landing'
 import Onboarding from './Onboarding'
 import Dashboard from './Dashboard'
 import TestPage from './TestPage'
+import AskWidgetDemo from './AskWidgetDemo'
+import AskWidgetView from './AskWidgetView'
+import CmsComponentsDemo from './CmsComponentsDemo'
 import ClerkLanding from './ClerkLanding'
 import ClerkDashboard from './ClerkDashboard'
 import MultiAuthDashboard from './MultiAuthDashboard'
@@ -43,7 +46,7 @@ export default function App() {
           <PropServer publishableKey={publishableKey} url={apiUrl}>
             <PropPreload
               dist={[{ runtime: 'react', version: '19' }]}
-              components={['headlo-auth-button']}
+              components={['headlo-auth-button', 'headlo-ask-widget']}
             />
             <HeadloRouter />
           </PropServer>
@@ -108,8 +111,11 @@ function HeadloRouter() {
   if (path.startsWith('/multiauth/onboarding') || path === '/multiauth' || path === '/multiauth/') return <MultiAuthOnboarding />
 
   // Public routes
-  if (path.startsWith('/onboarding')) return <Onboarding />
-  if (path.startsWith('/test'))       return <TestPage />
+  if (path.startsWith('/onboarding'))     return <Onboarding />
+  if (path.startsWith('/test'))           return <TestPage />
+  if (path.startsWith('/demo/askwidget')) return <AskWidgetDemo />
+  if (path.startsWith('/demo/cms-components')) return <CmsComponentsDemo />
+  if (path.startsWith('/view/askwidget')) return <AskWidgetView />
   return <Landing />
 }
 

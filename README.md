@@ -5,9 +5,13 @@ Example React app showing how to integrate the [headlo-react](https://github.com
 ## What it shows
 
 - Wrapping your app in `<HeadloProvider>` for authentication
+- Wrapping with `<SiteProvider>` so CMS hooks (`useHeadloClient`, `useCollection`, `useCmsComponents`) pick up anonKey + apiUrl automatically
 - Wrapping with `<PropServer>` to connect your publishable key and API URL
 - Using `<PropPreload>` to pre-fetch the component runtime and eliminate first-render flicker
 - Rendering `<AuthCard>` and `<PropCard>` in your React tree
+- Loading and rendering CMS components with `useCmsComponents` — see [`src/CmsComponentsDemo.tsx`](src/CmsComponentsDemo.tsx)
+- Setting `window.__headlo_config` so drop-in custom elements (`<headlo-auth-button>`,
+  `<headlo-ask-widget>`, etc.) pick up the same publishable key + API URL without extra wiring
 
 ## Setup
 
@@ -21,6 +25,7 @@ Create a `.env` file at the project root:
 VITE_HEADLO_AUTH_ISSUER=https://auth.headlo.com
 VITE_HEADLO_PUBLISHABLE_KEY=pk_live_...
 VITE_HEADLO_API_URL=https://api.headlo.com
+VITE_HEADLO_ANON_KEY=hl_anon_...   # only needed for CMS data / components (Option A below)
 ```
 
 ## Dev server
@@ -34,6 +39,211 @@ npm run dev
 ```bash
 npm run build
 ```
+
+## Runtime config for PROP custom elements
+
+React components read `VITE_HEADLO_*` env vars directly. But custom-element
+bundles served from PROP (`<headlo-auth-button>`, `<headlo-ask-widget>`) run in
+their own IIFE and can't reach `import.meta.env` — they read `window.__headlo_config`.
+
+`src/main.tsx` sets it once at startup:
+
+```ts
+;(window as any).__headlo_config = {
+  prop_key:    import.meta.env.VITE_HEADLO_PUBLISHABLE_KEY,
+  api_url:     import.meta.env.VITE_HEADLO_API_URL,
+  auth_issuer: import.meta.env.VITE_HEADLO_AUTH_ISSUER,
+}
+```
+
+Every PROP bundle on the page picks these up automatically. Individual attributes
+on the tag (e.g. `<headlo-auth-button auth-issuer="..." return-url="...">`)
+override the config values for that tag.
+
+**Legacy flat globals** — `window.__headlo_prop_key`, `__headlo_api_url`,
+`__headlo_auth_issuer` — are still mirrored for bundles compiled before the
+config-object migration. New code should read from `__headlo_config`.
+
+## Deploying to a new domain — Google auth checklist
+
+Three independent gates. Miss any and Google sign-in fails on the new domain.
+
+### 1. Google Cloud Console — Authorized redirect URIs
+
+Google redirects to the WORKER's callback, never to your app's URL. **Add once per auth issuer, not per client site.** If your app already points at an auth issuer that's registered with Google, skip this step.
+
+Google Cloud Console → Credentials → your OAuth client → **Authorized redirect URIs** → add:
+```
+https://<your-auth-issuer>/oauth/google/callback
+```
+
+For `VITE_HEADLO_AUTH_ISSUER=https://auth.headlo.com`, add `https://auth.headlo.com/oauth/google/callback`.
+
+**"Authorized JavaScript origins" is a red herring for this flow** — only Google's client-side Sign-In library uses that field. The server-side OAuth flow the SDK uses ignores it.
+
+### 2. `.env.production` — `VITE_HEADLO_AUTH_ISSUER`
+
+Point the client at the auth issuer whose callback URL Google trusts:
+
+```
+VITE_HEADLO_AUTH_ISSUER=https://auth.headlo.com
+```
+
+**If you use Cloudflare Pages with git auto-deploys**, also set this in the Pages dashboard → Settings → Environment variables (Production scope). CF-side builds ignore your local `.env.production` — only your manual `npm run deploy` reads it.
+
+### 3. `prop_server.api_key.allowed_origins` — publishable key origin allowlist
+
+The `pk_live_*` key is safe to expose in your JS bundle (Stripe-style) BECAUSE it's domain-locked. New deploy URL must be added to the key's allowlist, or the OAuth `authorize` request is rejected with `INVALID_HOST` / `ORIGIN_NOT_ALLOWED`.
+
+```sql
+UPDATE prop_server.api_key
+SET allowed_origins = array_append(allowed_origins, 'https://my-new-domain.com')
+WHERE publishable_key = 'pk_live_...'
+  AND NOT ('https://my-new-domain.com' = ANY(allowed_origins));
+```
+
+**Verify:**
+```sql
+SELECT publishable_key, allowed_origins
+FROM prop_server.api_key
+WHERE publishable_key = 'pk_live_...';
+```
+
+Same list gates both PROP component requests (`X-Headlo-Prop-Publishable-Key` header) AND OAuth redirect_uri validation. One row, two enforcement points. No worker restart needed — read per-request.
+
+### Symptom → cause
+
+| Error you see | Which gate is broken | Fix |
+|---|---|---|
+| Google URL shows `error=redirect_uri_mismatch` before user picks account | #1 — Google redirect URI not registered | Google Cloud Console → Authorized redirect URIs |
+| Landing back on your app → `INVALID_HOST` / `ORIGIN_NOT_ALLOWED` / redirect blocked | #3 — domain not in `allowed_origins` | Run the UPDATE SQL above |
+| `/oauth/authorize` returns 404 or wrong worker response | #2 — `VITE_HEADLO_AUTH_ISSUER` points at wrong host | Fix `.env.production` (and CF Pages env vars if git-deploying) |
+| Sign-in completes but session doesn't stick — you're bounced back to sign-in | Cookie SameSite/Secure mismatch (HTTP vs HTTPS) | Deploy over HTTPS; worker sets `SameSite=None; Secure` for cross-site |
+| Works locally, breaks only in prod | Any of #1-#3 has the local URL but not the prod URL | Compare local + prod values across all three gates |
+
+**Also for Clerk** (the `/clerk/*` demo routes) — Clerk has its own domain allowlist independent of the three above. If Clerk shows "Invalid host" or infinite redirects, that's Clerk dashboard → Configure → Domains / Restrictions → add your new origin.
+
+### Sanity checks
+
+- Test in an **incognito window** — bypasses stale cookies from prior failed attempts (browsers cache `INVALID_HOST` rejections)
+- **Watch the URL bar** during the flow — `error=` params on any redirect tell you exactly which gate rejected
+- **Watch the Network tab** for the `/oauth/token` request — 400 there usually means the code was minted but exchanged against the wrong auth issuer
+
+## Provider setup
+
+`headlo-react` hooks read config (anon key, api URL, auth issuer) from context.
+The full wrapping tree lives in [`src/App.tsx`](src/App.tsx) — the layers are
+independent, mix and match based on what your app actually needs:
+
+```tsx
+<HeadloProvider publishableKey={...} issuer={...}>       {/* auth (headlo-auth) — sign in / user state */}
+  <SiteProvider anonKey={...} apiUrl={...}>              {/* CMS data + useHeadloClient + useCollection */}
+    <PropServer publishableKey={...} url={...}>          {/* PROP custom-element runtime */}
+      <PropPreload dist={[...]} components={[...]} />    {/* eliminates first-paint flicker */}
+      <YourApp />
+    </PropServer>
+  </SiteProvider>
+</HeadloProvider>
+```
+
+Just want to render CMS components? You only need `<SiteProvider>`:
+
+```tsx
+import { SiteProvider } from 'headlo-react'
+
+const anonKey = import.meta.env.VITE_HEADLO_ANON_KEY as string
+const apiUrl  = import.meta.env.VITE_HEADLO_API_URL  as string | undefined
+
+export default function App() {
+  return (
+    <SiteProvider anonKey={anonKey} apiUrl={apiUrl}>
+      <YourApp />
+    </SiteProvider>
+  )
+}
+```
+
+Every hook below (`useHeadloClient`, `useCmsComponents`, `useCollection`, `useRecord`, etc.)
+reads from this provider. Skip it and the hooks silently fall back to `undefined` /
+`https://api.headlo.com` — safe for prod defaults, wrong for anything else.
+
+## Using CMS components on your site
+
+Two independent paths depending on whether you're building a React app or dropping
+a component onto a plain HTML page. Same components either way — they differ in
+auth model, delivery mechanism, and what data you need from the Headlo dashboard.
+
+### Option A — React app with `useCmsComponents` (anon key)
+
+For any app that already uses `headlo-react`. One hook loads the entire agency's
+component registry; each entry ships with a compiled `.Component` React function
+ready to render inline. See [`src/CmsComponentsDemo.tsx`](src/CmsComponentsDemo.tsx)
+for a runnable example (route: `/demo/cms-components`).
+
+```tsx
+import { useHeadloClient, useCmsComponents } from 'headlo-react'
+
+function Calculator() {
+  // useHeadloClient reads anonKey + apiUrl from SiteProvider context and
+  // returns a memoized HeadloClient. Same as `createClient(anonKey, { apiUrl })`
+  // without the boilerplate.
+  const client = useHeadloClient()
+  const { entries, loading, error } = useCmsComponents(client)
+
+  if (loading) return <div>Loading…</div>
+  if (error)   return <div>{error}</div>
+
+  const calc = entries.find(e => e.component_id === 'calculator')
+  if (!calc) return null
+
+  return (
+    <calc.Component
+      records={[{ collection_record_id: 'x', ...(calc.sampleData ?? {}) }]}
+      options={calc.templateOptions ?? {}}
+    />
+  )
+}
+```
+
+- **Endpoint:** `GET /v1/components` with `x-headlo-key: <anon>` header
+- **Returns:** every component in the anon key's agency (not filtered by `public`)
+- **Public checkbox NOT required** — the anon key is the auth boundary. Only share
+  it with sites you own.
+- **Compile happens in the browser** via Sucrase — you get real React components
+  in your tree, error boundaries work, hot reload works, everything React expects.
+
+### Option B — Plain HTML with `<script>` embed (public flag)
+
+For any HTML page anywhere on the internet. No SDK, no build step, no anon key —
+just paste the snippet the dashboard gives you at
+`/dashboard/cms/components/<id>` (developer mode → Public embed toggle → Get embed
+code).
+
+```html
+<div id="calculator-root"></div>
+<script
+  src="https://api.headlo.com/v1/component/calculator/embed.js"
+  data-mount-id="calculator-root"
+></script>
+```
+
+- **Endpoint:** `GET /v1/component/:id/embed.js` — no auth header
+- **Requires `public = true`** on the component row — check "Public embed" in the
+  editor. Any component without the flag returns 403.
+- **Compile happens on the worker**; the script tag mounts a self-contained bundle
+  into `#<mount-id>`. React lives inside the bundle, no version conflict with
+  your host page.
+
+### Which one to pick
+
+| You have… | Use |
+|---|---|
+| A React app you already own | Option A (`useCmsComponents`) |
+| A CMS/blog/landing page with just HTML | Option B (`<script>` embed) |
+| Multiple components on one page | Option A (one fetch loads all) |
+| One component to drop on a third-party site you don't fully control | Option B (works anywhere) |
+| Want to render the same component with different data per instance | Either — Option A gives you React props, Option B via `data-*` attrs |
+| Want components hidden from public traffic | Option A only (Option B requires `public = true`) |
 
 ## Related
 

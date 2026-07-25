@@ -1,19 +1,27 @@
-// Ambient JSX types for Headlo PROP custom elements mounted in this app.
-// Extend this list when you mount new PROP components — one entry per tag.
-// Consumers of the SDK have to declare these locally because tsup-bundled
-// module augmentations don't reliably propagate through `jsx: "react-jsx"`.
+// Local JSX augmentation for Headlo PROP custom elements.
+//
+// The prop-type SHAPES (which attributes each tag accepts) come from the
+// SDK — imported below. Only the JSX namespace augmentation is duplicated
+// here because tsup-bundled augmentations targeting `react/jsx-runtime`
+// don't reliably propagate through `jsx: "react-jsx"` + `moduleResolution:
+// "bundler"` in the consuming app.
+//
+// When the SDK adds a new attribute to an existing tag → nothing to update
+// here. Rebuild the SDK, this file picks it up via the imported type.
+//
+// When the SDK adds a whole new custom element → add one line below for
+// the new tag → the JSX entry. Its shape still comes from the SDK.
 
-import type { HTMLAttributes } from 'react'
+import type {
+  HeadloAuthButtonProps,
+  HeadloAskWidgetProps,
+} from 'headlo-react'
 
-// React 19 puts JSX at React.JSX (inside `declare module 'react'`).
-// `jsx: "react-jsx"` in tsconfig resolves IntrinsicElements through this
-// namespace, NOT the global one.
 declare module 'react' {
   namespace JSX {
     interface IntrinsicElements {
-      'headlo-auth-button': HTMLAttributes<HTMLElement> & {
-        'return-url'?: string
-      }
+      'headlo-auth-button': HeadloAuthButtonProps
+      'headlo-ask-widget':  HeadloAskWidgetProps
     }
   }
 }

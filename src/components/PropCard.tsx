@@ -1,6 +1,13 @@
 import React from 'react'
 import { useComponent, usePropService } from 'headlo-react'
 
+// Publishable key + auth issuer must be passed as HTML attributes on every
+// PROP tag — attributes-only design (no window globals for components).
+// Env-var-sourced at build time; merchants embedding on their own site
+// hardcode the same values on the tag.
+const PROP_KEY    = import.meta.env.VITE_HEADLO_PUBLISHABLE_KEY as string
+const AUTH_ISSUER = import.meta.env.VITE_HEADLO_AUTH_ISSUER    as string | undefined
+
 export default function PropCard() {
   const prop = usePropService()
   const { loaded, error } = useComponent('headlo-auth-button')
@@ -51,11 +58,26 @@ export default function PropCard() {
           Default layout dimensions are reserved by <PropPreload>, so callers
           just use the tag with no min-width/min-height boilerplate. */}
       <div style={s.preview}>
+        {/* Every attribute the def contract declares must be passed here.
+            TypeScript enforces this via ambient JSX types in
+            src/headlo-elements.d.ts — mistyped names ('retrun-url',
+            unknown 'foo') become compile errors. prop-key is required
+            at runtime; without it the button logs MISSING_PROP_KEY and
+            does nothing. */}
         <div style={s.label}>Live element (default — returns to current page)</div>
-        <headlo-auth-button style={{ marginTop: 8 }} />
+        <headlo-auth-button
+          prop-key={PROP_KEY}
+          auth-issuer={AUTH_ISSUER}
+          style={{ marginTop: 8 }}
+        />
 
         <div style={{ ...s.label, marginTop: 16 }}>Live element (return-url="/dashboard")</div>
-        <headlo-auth-button return-url="/dashboard" style={{ marginTop: 8 }} />
+        <headlo-auth-button
+          prop-key={PROP_KEY}
+          auth-issuer={AUTH_ISSUER}
+          return-url="/dashboard"
+          style={{ marginTop: 8 }}
+        />
       </div>
 
       {/* API buttons */}

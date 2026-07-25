@@ -84,6 +84,10 @@ export default function Landing() {
           <a href="/test" style={s.testLinkAnchor}>
             → Open the test page to inspect tokens, components, and the PROP service
           </a>
+          <br />
+          <a href="/demo/cms-components" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
+            → CMS components demo (useCmsComponents with anon key)
+          </a>
         </div>
       </main>
 
