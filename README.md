@@ -4,7 +4,8 @@ Example React app showing how to integrate the [headlo-react](https://github.com
 
 ## What it shows
 
-- Wrapping your app in `<HeadloProvider>` for authentication
+- Wrapping your app in `<HeadloProvider>` (v1, cookie-based) for authentication — see [`src/App.tsx`](src/App.tsx)
+- Wrapping with **`<HeadloProviderV2>` (v2, DPoP-anchored, cookie-less)** for the ABS auth flow — see [`src/AbsTestPage.tsx`](src/AbsTestPage.tsx) at route `/abs-test`
 - Wrapping with `<SiteProvider>` so CMS hooks (`useHeadloClient`, `useCollection`, `useCmsComponents`) pick up anonKey + apiUrl automatically
 - Wrapping with `<PropServer>` to connect your publishable key and API URL
 - Using `<PropPreload>` to pre-fetch the component runtime and eliminate first-render flicker
@@ -12,6 +13,8 @@ Example React app showing how to integrate the [headlo-react](https://github.com
 - Loading and rendering CMS components with `useCmsComponents` — see [`src/CmsComponentsDemo.tsx`](src/CmsComponentsDemo.tsx)
 - Setting `window.__headlo_config` so drop-in custom elements (`<headlo-auth-button>`,
   `<headlo-ask-widget>`, etc.) pick up the same publishable key + API URL without extra wiring
+- **`HeadloProviderV2` end-to-end diagnostic surface** at `/abs-test` — sign in/out, live persistent log viewer, storage inspector, token payload decoder. Useful for verifying DPoP flow on your own devices.
+- **WebCrypto capability regression check** at `/abs-spike` — 7-test verification that `extractable: false` + IndexedDB + ECDSA P-256 work in the current browser. Run this on any new browser/OS before committing to `HeadloProviderV2`.
 
 ## Setup
 
@@ -200,6 +203,92 @@ export default function App() {
 Every hook below (`useHeadloClient`, `useCmsComponents`, `useCollection`, `useRecord`, etc.)
 reads from this provider. Skip it and the hooks silently fall back to `undefined` /
 `https://api.headlo.com` — safe for prod defaults, wrong for anything else.
+
+---
+
+## HeadloProviderV2 (DPoP, cookie-less) — route `/abs-test`
+
+The `/abs-test` route in this demo uses **`HeadloProviderV2`** (headlo-auth 0.2.0+) instead of `HeadloProvider` v1. Same API surface — different session mechanics under the hood. Purpose: verify that ABS Phase A auth works end-to-end on your target environment (especially iOS Safari on customer domains).
+
+### What's different from v1
+
+| Aspect | v1 (`HeadloProvider`) | v2 (`HeadloProviderV2`) |
+|---|---|---|
+| Long-lived credential | `HttpOnly` cookie `headlo_refresh` | ECDSA P-256 key in IndexedDB, `extractable: false` |
+| Access token storage | React state (memory only) | `sessionStorage` (per-tab, survives page reload) |
+| Silent refresh | `POST /oauth/refresh` (cookie-based) | `POST /oauth/token/refresh-dpop` (DPoP-based) |
+| New tab / browser restart | Cookie shared across tabs → auto-signed-in | `POST /oauth/dpop/mint` resurrects session from IndexedDB key |
+| Works on iOS Safari on customer bare domain | ✗ (ITP blocks refresh cookie) | ✓ (no cookies at all) |
+| Works on Firefox strict / Brave-Aggressive | ✗ | ✓ |
+| Same React API (`<SignedIn>`, `useUser`, etc.) | ✓ | ✓ |
+
+### How the /abs-test route is wired
+
+```tsx
+// src/App.tsx — /abs-test bypasses the root <HeadloProvider> v1
+if (path.startsWith('/abs-test')) return <AbsTestPage />
+```
+
+```tsx
+// src/AbsTestPage.tsx — has its own HeadloProviderV2 tree
+import { HeadloProviderV2, useAuth, useUser, SignedIn, SignedOut, SignInButton, SignOutButton } from 'headlo-auth'
+
+export default function AbsTestPage() {
+  return (
+    <HeadloProviderV2 publishableKey={publishableKey} issuer={authIssuer}>
+      <AbsTestPageInner />
+    </HeadloProviderV2>
+  )
+}
+
+function AbsTestPageInner() {
+  const { isLoaded, isSignedIn } = useAuth()
+  const user = useUser()
+  // ... standard React auth UI + diagnostic panels
+}
+```
+
+### What the page includes for debugging
+
+- **Auth state card** — shows `isLoaded`, `isSignedIn`, `user.id`, `user.email`, `user.displayName` live
+- **Access token inspector** — click "Inspect" to decode + display the JWT payload; look for `cnf.jkt` (DPoP binding) and `azp` (client-id binding)
+- **Storage inspection** — shows what's in `sessionStorage` / `localStorage` / `IndexedDB` for the auth keys, plus checks that no refresh cookie is present (v2 shouldn't have one)
+- **Persistent log viewer** — captures all `[headlo-auth-v2]` events across page reloads (writes to localStorage). Copy button dumps the log to clipboard for sharing.
+- **Clear all local storage + reload** — nukes sessionStorage / localStorage / IndexedDB to simulate a fresh visitor
+
+### Recommended test flow for a new deployment
+
+1. Deploy your app to your target domain
+2. Open `<your-domain>/abs-test` on **iPhone Safari** (or your primary target browser)
+3. Click "Sign in with Headlo (v2)" — completes PKCE flow, redirects back
+4. Verify auth state shows signed-in with user info populated
+5. Click "Inspect" on the access token card — confirm `cnf.jkt` and `azp` claims present
+6. Reload the tab — session should persist via silent refresh
+7. Navigate away (e.g. type `<your-domain>/` in address bar) and back to `/abs-test` — session persists
+8. Close the tab, open a new tab to `/abs-test` — session resurrects via `/oauth/dpop/mint`
+9. Click "Sign out" — session cleared, DPoP key deleted, next mount shows signed-out
+10. Copy the persistent log at any point to share diagnostic output
+
+If any step doesn't behave as expected, the persistent log + storage inspector give you enough info to file a targeted bug report.
+
+## WebCrypto capability check — route `/abs-spike`
+
+A separate diagnostic page that verifies the WebCrypto primitives ABS depends on actually work in the current browser. **Run this once on any new target browser before committing to v2.** Zero auth surface — just tests browser APIs.
+
+7 tests:
+1. Generate ECDSA P-256 key with `extractable: false`
+2. `exportKey('jwk', privateKey)` throws (extractable enforced)
+3. `exportKey('jwk', publicKey)` succeeds (needed for JWK to server)
+4. DPoP-style JWT sign + verify roundtrip
+5. IndexedDB stores + retrieves `CryptoKeyPair`
+6. Retrieved key preserves `extractable: false`
+7. Performance: 100 signs, target < 10ms per sign
+
+Verdict banner at the top says "ABS spike PASSED" or "FAILED" clearly. If any test fails, ABS v2 is not viable in that browser.
+
+**Already verified passing on:** Chrome desktop, Safari desktop, Safari iOS, Firefox desktop.
+
+---
 
 ## Using CMS components on your site
 
