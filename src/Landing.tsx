@@ -88,6 +88,14 @@ export default function Landing() {
           <a href="/demo/cms-components" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
             → CMS components demo (useCmsComponents with anon key)
           </a>
+          <br />
+          <a href="/view/askwidget" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
+            → Ask Widget view (drop-in <code style={s.code}>&lt;headlo-ask-widget&gt;</code> custom element)
+          </a>
+          <br />
+          <a href="/demo/askwidget" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
+            → Ask Widget demo (React-side integration + attribute controls)
+          </a>
         </div>
       </main>
 

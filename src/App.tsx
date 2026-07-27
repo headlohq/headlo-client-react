@@ -14,6 +14,8 @@ import ClerkLanding from './ClerkLanding'
 import ClerkDashboard from './ClerkDashboard'
 import MultiAuthDashboard from './MultiAuthDashboard'
 import MultiAuthOnboarding from './MultiAuthOnboarding'
+import AbsSpikePage from './AbsSpikePage'
+import AbsTestPage from './AbsTestPage'
 
 const authIssuer     = import.meta.env.VITE_HEADLO_AUTH_ISSUER     as string
 const publishableKey = import.meta.env.VITE_HEADLO_PUBLISHABLE_KEY as string
@@ -22,6 +24,19 @@ const anonKey        = import.meta.env.VITE_HEADLO_ANON_KEY        as string | u
 
 export default function App() {
   const path = window.location.pathname
+
+  // ABS spike — standalone route with zero auth surface. Verifies browser
+  // primitives (WebCrypto extractable:false, IndexedDB CryptoKey persistence,
+  // DPoP-style sign roundtrip, performance) required by the Anchor-Bound
+  // Session design before we start building it. See:
+  //   claude/headlo-auth-abs-build-sequencing.md — 11 known gaps this test covers
+  //   claude/headlo-auth-anchor-bound-session.md — the design being validated
+  if (path.startsWith('/abs-spike')) return <AbsSpikePage />
+
+  // ABS Phase A end-to-end test — HeadloProviderV2 (DPoP + cookie-less).
+  // Bypasses the root <HeadloProvider> v1 so the two providers don't conflict.
+  // Test flow + spec in claude/headlo-auth-abs-phase0-spec.md.
+  if (path.startsWith('/abs-test')) return <AbsTestPage />
 
   // Clerk variant — uses the ClerkProvider mounted in main.tsx
   if (path.startsWith('/clerk')) {

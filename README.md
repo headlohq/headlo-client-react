@@ -25,8 +25,42 @@ Create a `.env` file at the project root:
 VITE_HEADLO_AUTH_ISSUER=https://auth.headlo.com
 VITE_HEADLO_PUBLISHABLE_KEY=pk_live_...
 VITE_HEADLO_API_URL=https://api.headlo.com
-VITE_HEADLO_ANON_KEY=hl_anon_...   # only needed for CMS data / components (Option A below)
+VITE_HEADLO_ANON_KEY=pk_anon_...   # only needed for CMS data / components (Option A below)
 ```
+
+### Two keys, two purposes — don't mix them up
+
+Two publishable-style keys ship in the bundle. They look similar, come from
+different tables, and are enforced by different code paths. Copying one into
+the other's slot fails silently with `401` at request time.
+
+| Env var | Prefix | Where it lives | Where to get it in the dashboard | What it authorizes |
+|---|---|---|---|---|
+| `VITE_HEADLO_PUBLISHABLE_KEY` | `pk_live_` | `prop_server.api_key` | **Settings → Application → Generate key** at https://www.headlo.com/dashboard/settings. Enter a name + allowed origins, click *Generate key*. **Value is shown once — copy immediately.** | PROP custom elements + OAuth `client_id` (`<HeadloProvider>`, `<PropServer>`, `<headlo-auth-button>`) |
+| `VITE_HEADLO_ANON_KEY` | `pk_anon_` | `platform.site.anon_key` | **Settings → Sites** at https://www.headlo.com/dashboard/sites → pick your site → *Anon key* row → copy button. Always visible, no regeneration needed. | CMS reads via `x-headlo-key` header (`useHeadloClient`, `useCollection`, `useCmsComponents`) |
+
+**Generating a `pk_live_*` key** — one form on https://www.headlo.com/dashboard/settings
+under *Application*:
+1. **Key name** — a label for you (e.g. `Production`, `Staging`). Not sent anywhere.
+2. **Allowed origins** — comma-separated list. Every origin that will embed a
+   PROP component OR receive an OAuth redirect for this key must be listed
+   here. Missing an origin = `401` / `INVALID_HOST` at runtime.
+3. Click **Generate key** → the value appears once in a "Copy your publishable
+   key now — it won't be shown again" reveal. Paste it into your `.env` file
+   immediately. After dismissing the reveal, only the name + origins + created-at
+   remain in the dashboard; the key itself is unrecoverable.
+
+**One key per role.** A `pk_live_*` in the `ANON_KEY` slot returns `401
+UNAUTHORIZED` from `/v1/components` because the worker looks up
+`platform.site` by `anon_key`, not `prop_server.api_key`. A `pk_anon_*` in
+the `PUBLISHABLE_KEY` slot fails PROP embed origin checks for the same
+inverse reason. Both keys are safe to commit — each is domain-locked via
+`allowed_origins` on its owning row, so lifting a value out of the bundle
+gets an attacker nothing usable from any other domain.
+
+**Any site's anon key works** — the demo will render whichever agency's
+components the key resolves to. If you own multiple sites, pick the one
+whose components you want the demo to show.
 
 ## Dev server
 

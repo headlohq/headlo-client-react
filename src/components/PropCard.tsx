@@ -64,10 +64,8 @@ export default function PropCard() {
             unknown 'foo') become compile errors. prop-key is required
             at runtime; without it the button logs MISSING_PROP_KEY and
             does nothing. */}
-        <div style={s.label}>Live element (default — returns to current page)</div>
+        <div style={s.label}>Live element (default properties set in editor)</div>
         <headlo-auth-button
-          prop-key={PROP_KEY}
-          auth-issuer={AUTH_ISSUER}
           style={{ marginTop: 8 }}
         />
 
@@ -75,7 +73,7 @@ export default function PropCard() {
         <headlo-auth-button
           prop-key={PROP_KEY}
           auth-issuer={AUTH_ISSUER}
-          return-url="/dashboard"
+          return-url="/test"
           style={{ marginTop: 8 }}
         />
       </div>
