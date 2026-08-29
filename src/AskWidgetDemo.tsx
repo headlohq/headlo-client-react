@@ -27,7 +27,7 @@ interface HardcodedWidgetProps {
   accentColor?:  string
 }
 
-function HardcodedAskWidget({
+export function HardcodedAskWidget({
   displayName = 'Ask Headlo',
   tagline     = 'Powered by service:llm-chat:v1',
   accentColor = '#5dcaa5',
@@ -142,7 +142,7 @@ function HardcodedAskWidget({
 // ─── Custom-element version — proves the same UX ships as PROP too ──────
 // Uses the (future) <headlo-ask-widget> tag. If the component isn't seeded
 // yet, we show a note explaining the plan.
-function CustomElementAskWidget() {
+export function CustomElementAskWidget() {
   const { loaded, error } = useComponent('headlo-ask-widget')
 
   return (

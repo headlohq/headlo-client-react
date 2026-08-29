@@ -89,12 +89,52 @@ export default function Landing() {
             → CMS components demo (useCmsComponents with anon key)
           </a>
           <br />
+          <a href="/demo/auth-v2/cms-components" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
+            → CMS components demo — V2 (HeadloProviderV2 + DPoP end-to-end)
+          </a>
+          <br />
+          <a href="/demo/prop-components" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
+            → PROP components demo (usePropComponents with anon key)
+          </a>
+          <br />
           <a href="/view/askwidget" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
             → Ask Widget view (drop-in <code style={s.code}>&lt;headlo-ask-widget&gt;</code> custom element)
           </a>
           <br />
+          <a href="/view/askchat" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
+            → Ask Chat view (migrated <code style={s.code}>&lt;headlo-ask-chat&gt;</code> — action-binding to <code style={s.code}>headlo-ask-chat:v1</code> service)
+          </a>
+          <br />
+          <a href="/askchat-vanilla-local.html" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
+            → Ask Chat vanilla — LOCAL (no framework, 3 script tags, points at <code style={s.code}>127.0.0.1:8787</code>)
+          </a>
+          <br />
+          <a href="/askchat-vanilla.html" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
+            → Ask Chat vanilla — PROD (same page, points at <code style={s.code}>api.headlo.com</code>)
+          </a>
+          <br />
+          <a href="/view/cap-expert-widget" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
+            → Cap Expert widget view — v2 auth (drop-in <code style={s.code}>&lt;cap-expert-widget&gt;</code> — walks buyer through a CAP protocol; auth via <code style={s.code}>headlo-auth:v2</code> PROP service with DPoP. Sign in at <code style={s.code}>/demo/prop-auth-v2</code> first.)
+          </a>
+          <br />
+          <a href="/view/cap-expert-widget?service=cap-expert:v3" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
+            → Cap Expert widget view — v3 (configured CAP: same widget, but <code style={s.code}>cap-expert:v3</code> reads capId from the dashboard's config field, not the ask arg. Runtime override toggle in the header.)
+          </a>
+          <br />
           <a href="/demo/askwidget" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
             → Ask Widget demo (React-side integration + attribute controls)
+          </a>
+          <br />
+          <a href="/demo/auth-v2/askwidget" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
+            → Ask Widget demo — V2 (HeadloProviderV2 + DPoP, personalizes widget with signed-in user)
+          </a>
+          <br />
+          <a href="/demo/prop-auth-v2" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
+            → PROP Auth v2 demo (framework-agnostic — no React provider, drives auth via <code style={s.code}>window.__headlo_service_headlo_auth_v2</code>)
+          </a>
+          <br />
+          <a href="/abs-test" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
+            → ABS Phase A test (HeadloProviderV2 + DPoP + A.5.1 enforcement step runner)
           </a>
         </div>
       </main>

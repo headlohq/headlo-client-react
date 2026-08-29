@@ -1,5 +1,5 @@
 import React from 'react'
-import { useHeadloClient, useCmsComponents } from 'headlo-react'
+import { useCmsComponents } from 'headlo-react'
 
 // Demo: how to load ALL of an agency's CMS components with `useCmsComponents`
 // and render a specific one (`calculator`) on a customer site.
@@ -39,17 +39,16 @@ export default function CmsComponentsDemo() {
 }
 
 function Demo() {
-  // Zero-arg convenience — reads anonKey + apiUrl from SiteProvider context
-  // and returns a memoized HeadloClient. Same as calling
-  // `createClient(anonKey, { apiUrl })` manually, minus the boilerplate.
-  // Passing this client into useCmsComponents triggers the anon-key branch
-  // (GET /v1/components with x-headlo-key header) vs. the editor JWT path.
-  const client = useHeadloClient()
-
-  // Same hook the dashboard uses. entries[] is the whole registry; each entry
-  // has a `.Component` function ready to render — Sucrase already compiled the
-  // JSX inside the SDK at hydration time.
-  const { entries, loading, error } = useCmsComponents(client)
+  // Zero-arg — reads anonKey + apiUrl from <SiteProvider> context internally,
+  // builds a HeadloClient under the hood, and calls GET /v1/components with
+  // the x-headlo-key header. Same hook the dashboard uses; entries[] is the
+  // whole registry with each entry's `.Component` pre-compiled by Sucrase at
+  // hydration.
+  //
+  // Advanced: pass an explicit HeadloClient (from createClient() or
+  // useHeadloClient()) or a bare list function to override the source —
+  // useful for tests, SSR fixtures, or the editor's Clerk-JWT path.
+  const { entries, loading, error } = useCmsComponents()
 
   const calc = entries.find(e => e.component_id === TARGET_COMPONENT_ID)
 

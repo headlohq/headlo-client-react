@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ask Chat — Vanilla HTML (local)</title>
+
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #faf9f6; color: #1a1a18; margin: 0; padding: 24px; }
+    header { max-width: 720px; margin: 0 auto 24px; }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    p { color: #6b6a62; font-size: 14px; line-height: 1.6; margin: 0 0 8px; }
+    code { background: #f5f2eb; padding: 2px 6px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 12px; }
+    .config { max-width: 720px; margin: 0 auto 16px; padding: 12px 16px; background: #e6f4ea; border: 1px solid #b6d8c0; border-radius: 6px; font-size: 12px; color: #1a4a2a; }
+    .widget-wrap { max-width: 720px; margin: 0 auto; }
+    .fine { max-width: 720px; margin: 24px auto 0; font-size: 11px; color: #8a8a80; text-align: center; }
+    .fine a { color: #8a8a80; }
+  </style>
+
+  <!--
+    LOCAL DEV variant of askchat-vanilla.html. Same three-script embed pattern,
+    but all URLs point at the local worker on http://127.0.0.1:8787 so you can
+    test bundle changes without deploying.
+    Prod version at askchat-vanilla.html is unchanged.
+  -->
+
+  <!-- 1. React 19 UMD runtime — served by the local worker. -->
+  <script src="http://127.0.0.1:8787/v1/prop/dist/react/19/bundle"></script>
+
+  <!-- 2. Runtime config — point the widget + service at the local API. -->
+  <script>
+    window.__headlo_api_url  = 'http://127.0.0.1:8787'
+    window.__headlo_prop_key = 'pk_live_71ff1bd91a36027bde7a76a3736bc2f2'
+  </script>
+
+  <!-- 3. Widget component bundle from the local worker. -->
+  <script src="http://127.0.0.1:8787/v1/prop/component/headlo-ask-chat/v1/bundle"></script>
+</head>
+<body>
+
+  <header>
+    <h1>Ask Chat — vanilla HTML (LOCAL DEV)</h1>
+    <p>
+      Zero-framework embed pointed at <code>http://127.0.0.1:8787</code>. Use
+      this for iterating on the widget + service bundles without deploying —
+      any Save in <code>/dashboard/prop/components/headlo-ask-chat</code> or
+      <code>/dashboard/prop/services/headlo-ask-chat</code> against the local
+      worker will surface here on hard-refresh.
+    </p>
+    <p>
+      For the same page against production, see
+      <a href="/askchat-vanilla.html">askchat-vanilla.html</a>.
+    </p>
+  </header>
+
+  <div class="config">
+    <strong>Prerequisites:</strong>
+    <ol style="margin: 6px 0 0; padding-left: 20px;">
+      <li>Local worker running: <code>cd headlo-worker &amp;&amp; npm run dev</code></li>
+      <li>Component <code>headlo-ask-chat</code> exists in the LOCAL DB and is marked public</li>
+      <li>Service <code>headlo-ask-chat</code> exists in the LOCAL DB, is public, and has valid <code>OPENAI_API_KEY</code>/<code>ANTHROPIC_API_KEY</code> env var (whichever provider the app config uses)</li>
+    </ol>
+  </div>
+
+  <div class="widget-wrap">
+    <headlo-ask-chat
+      display-name="Ask Phil (local)"
+      placeholder="Ask Phil a question"
+      accent-color="#0f6e56"
+      on-ask="headlo-ask-chat:v1:ask"
+      on-reset="headlo-ask-chat:v1:reset"
+    ></headlo-ask-chat>
+  </div>
+
+  <p class="fine">
+    <a href="/view/askchat">Same widget rendered inside the React app →</a>
+    &nbsp;·&nbsp;
+    <a href="/askchat-vanilla.html">Prod version →</a>
+  </p>
+
+</body>
+</html>

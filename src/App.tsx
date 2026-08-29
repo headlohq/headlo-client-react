@@ -1,6 +1,6 @@
-import { HeadloProvider, useAuth as useHeadloAuth } from 'headlo-auth'
+import { HeadloProviderV1, useAuth as useHeadloAuth } from 'headlo-auth'
 import { useAuth as useClerkAuth } from '@clerk/clerk-react'
-import { PropServer, PropPreload, SiteProvider, MultiAuthBridge } from 'headlo-react'
+import { PropServer, SiteProvider, MultiAuthBridge } from 'headlo-react'
 import React from 'react'
 
 import Landing from './Landing'
@@ -9,13 +9,19 @@ import Dashboard from './Dashboard'
 import TestPage from './TestPage'
 import AskWidgetDemo from './AskWidgetDemo'
 import AskWidgetView from './AskWidgetView'
+import AskChatView   from './AskChatView'
+import CapExpertView from './CapExpertView'
 import CmsComponentsDemo from './CmsComponentsDemo'
+import CmsComponentsDemoV2 from './CmsComponentsDemoV2'
+import AskWidgetDemoV2 from './AskWidgetDemoV2'
+import PropComponentsDemo from './PropComponentsDemo'
 import ClerkLanding from './ClerkLanding'
 import ClerkDashboard from './ClerkDashboard'
 import MultiAuthDashboard from './MultiAuthDashboard'
 import MultiAuthOnboarding from './MultiAuthOnboarding'
 import AbsSpikePage from './AbsSpikePage'
 import AbsTestPage from './AbsTestPage'
+import PropAuthV2Demo from './PropAuthV2Demo'
 
 const authIssuer     = import.meta.env.VITE_HEADLO_AUTH_ISSUER     as string
 const publishableKey = import.meta.env.VITE_HEADLO_PUBLISHABLE_KEY as string
@@ -33,10 +39,15 @@ export default function App() {
   //   claude/headlo-auth-anchor-bound-session.md — the design being validated
   if (path.startsWith('/abs-spike')) return <AbsSpikePage />
 
-  // ABS Phase A end-to-end test — HeadloProviderV2 (DPoP + cookie-less).
-  // Bypasses the root <HeadloProvider> v1 so the two providers don't conflict.
+  // ABS Phase A end-to-end test — HeadloProviderV1V2 (DPoP + cookie-less).
+  // Bypasses the root <HeadloProviderV1> v1 so the two providers don't conflict.
   // Test flow + spec in claude/headlo-auth-abs-phase0-spec.md.
   if (path.startsWith('/abs-test')) return <AbsTestPage />
+
+  // PROP-service-only v2 demo — no React provider, entire auth surface driven
+  // by window.__headlo_service_headlo_auth_v2 loaded via <script>. Proves the
+  // framework-agnostic path used by vanilla HTML pages and non-React frameworks.
+  if (path.startsWith('/demo/prop-auth-v2')) return <PropAuthV2Demo />
 
   // Clerk variant — uses the ClerkProvider mounted in main.tsx
   if (path.startsWith('/clerk')) {
@@ -46,11 +57,11 @@ export default function App() {
   }
 
   // headlo-auth variant — Router runs inside the provider so it can read auth state.
-  // MultiAuthBridge sits between HeadloProvider and PropServer so that data hooks
+  // MultiAuthBridge sits between HeadloProviderV1 and PropServer so that data hooks
   // (useCollection, useRecord, useList) automatically pick up a token from whichever
   // auth provider is currently active — headlo-auth wins by priority, Clerk is fallback.
   return (
-    <HeadloProvider
+    <HeadloProviderV1
       publishableKey={publishableKey}
       issuer={authIssuer}
       signInFallbackRedirectUrl="/dashboard"
@@ -59,15 +70,19 @@ export default function App() {
       <AppMultiAuthBridge>
         <SiteProvider anonKey={anonKey} apiUrl={apiUrl}>
           <PropServer publishableKey={publishableKey} url={apiUrl}>
-            <PropPreload
-              dist={[{ runtime: 'react', version: '19' }]}
-              components={['headlo-auth-button', 'headlo-ask-widget']}
-            />
+            {/* PropPreload used to live here for headlo-auth-button + headlo-ask-widget.
+               Removed — the app-level preload injected <link rel="preload"> on every
+               route including ones that don't render those widgets, triggering
+               "preloaded but not used" console warnings. Individual page components
+               that render those widgets rely on useComponent() to fetch on mount
+               (cached after first load), so overall perf is unchanged. If a specific
+               page needs faster first paint, add <PropPreload> INSIDE that page
+               component, not at the app root. */}
             <HeadloRouter />
           </PropServer>
         </SiteProvider>
       </AppMultiAuthBridge>
-    </HeadloProvider>
+    </HeadloProviderV1>
   )
 }
 
@@ -128,9 +143,14 @@ function HeadloRouter() {
   // Public routes
   if (path.startsWith('/onboarding'))     return <Onboarding />
   if (path.startsWith('/test'))           return <TestPage />
+  if (path.startsWith('/demo/auth-v2/askwidget')) return <AskWidgetDemoV2 />
   if (path.startsWith('/demo/askwidget')) return <AskWidgetDemo />
+  if (path.startsWith('/demo/auth-v2/cms-components')) return <CmsComponentsDemoV2 />
   if (path.startsWith('/demo/cms-components')) return <CmsComponentsDemo />
-  if (path.startsWith('/view/askwidget')) return <AskWidgetView />
+  if (path.startsWith('/demo/prop-components')) return <PropComponentsDemo />
+  if (path.startsWith('/view/askwidget'))         return <AskWidgetView />
+  if (path.startsWith('/view/askchat'))           return <AskChatView />
+  if (path.startsWith('/view/cap-expert-widget')) return <CapExpertView />
   return <Landing />
 }
 

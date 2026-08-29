@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ask Chat — Vanilla HTML</title>
+
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #faf9f6; color: #1a1a18; margin: 0; padding: 24px; }
+    header { max-width: 720px; margin: 0 auto 24px; }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    p { color: #6b6a62; font-size: 14px; line-height: 1.6; margin: 0 0 8px; }
+    code { background: #f5f2eb; padding: 2px 6px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 12px; }
+    .config { max-width: 720px; margin: 0 auto 16px; padding: 12px 16px; background: #fdfaf3; border: 1px solid #ead9a7; border-radius: 6px; font-size: 12px; color: #7a5a10; }
+    .widget-wrap { max-width: 720px; margin: 0 auto; }
+    .fine { max-width: 720px; margin: 24px auto 0; font-size: 11px; color: #8a8a80; text-align: center; }
+    .fine a { color: #8a8a80; }
+  </style>
+
+  <!--
+    Zero-framework embed of a Headlo PROP widget. Three script tags + one config
+    script is the whole runtime — no React import, no build step, no npm.
+    Works as a copy-paste into any WordPress custom-HTML block, static site, or
+    handwritten HTML page.
+
+    The widget renders as a native custom element defined by the bundle at
+    step 3. The `on-ask` / `on-reset` attributes on the tag are resolved by the
+    wrapper into bound functions at mount — the wrapper also auto-loads the
+    service bundle on first use, so no manual <script> for the service is
+    needed here.
+  -->
+
+  <!-- 1. React 19 UMD runtime — the compiled component bundle references
+       window.__headlo_React_19 / __headlo_ReactDOM_19. Include ONCE per page. -->
+  <script src="https://api.headlo.com/v1/prop/dist/react/19/bundle"></script>
+
+  <!-- 2. Runtime config globals. The service client_js reads these when it
+       POSTs to /v1/prop/llm/chat. Replace pk_live_... with your real key. -->
+  <script>
+    window.__headlo_api_url  = 'https://api.headlo.com'
+    window.__headlo_prop_key = 'pk_live_087e7cac2872b6b8a01380514c36a1bc'
+  </script>
+
+  <!-- 3. Widget component bundle. Runs customElements.define('headlo-ask-chat', …)
+       synchronously on load. -->
+  <script src="https://api.headlo.com/v1/prop/component/headlo-ask-chat/v1/bundle"></script>
+</head>
+<body>
+
+  <header>
+    <h1>Ask Chat — vanilla HTML embed</h1>
+    <p>
+      This page embeds <code>&lt;headlo-ask-chat&gt;</code> with zero framework
+      code. Three <code>&lt;script&gt;</code> tags in the head + a config
+      script + one custom-element tag in the body. No React import, no
+      npm install, no build step.
+    </p>
+    <p>
+      The <code>on-ask</code> attribute is a composite
+      <code>slug:version:action</code> string. The wrapper auto-loads the
+      matching service bundle on first render — you don't add a
+      <code>&lt;script&gt;</code> for the service.
+    </p>
+  </header>
+
+  <div class="config">
+    <strong>Editing this page:</strong> replace <code>pk_live_…</code> with your
+    own PROP publishable key (from <code>/dashboard/prop</code>) if you're
+    forking. The component and service under <code>headlo-ask-chat</code> must
+    be marked public in the dashboard for anonymous browsers to fetch them.
+  </div>
+
+  <div class="widget-wrap">
+    <!--
+      All widget config lives on the tag. Change any attribute, and the widget
+      re-renders. Add `knowledge-scope="You are an expert on X"` to layer a
+      persona on top of the service's base system prompt per embed.
+    -->
+    <headlo-ask-chat
+      display-name="Ask Phil"
+      placeholder="Ask Phil a question"
+      accent-color="#5dcaa5"
+      on-ask="headlo-ask-chat:v1:ask"
+      on-reset="headlo-ask-chat:v1:reset"
+    ></headlo-ask-chat>
+  </div>
+
+  <p class="fine">
+    <a href="/view/askchat">Same widget rendered inside the React app →</a>
+  </p>
+
+</body>
+</html>

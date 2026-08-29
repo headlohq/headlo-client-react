@@ -1,5 +1,6 @@
 import React from 'react'
-import { HeadloProviderV2, useHeadloAuth, useUser, SignInButton, SignOutButton, SignedIn, SignedOut } from 'headlo-auth'
+import { HeadloProviderV2, useHeadloAuth, useUser, SignInButton, SignOutButton, SignedIn, SignedOut, dpopFetch, getExistingKeyPair, signDpopProof } from 'headlo-auth'
+import { DpopAuthBridge } from './DpopAuthBridge'
 
 // ABS Phase A end-to-end test page.
 //
@@ -31,10 +32,15 @@ export default function AbsTestPage() {
       signInFallbackRedirectUrl="/abs-test"
       signUpFallbackRedirectUrl="/abs-test"
     >
-      <AbsTestPageInner />
+      <DpopAuthBridge>
+        <AbsTestPageInner />
+      </DpopAuthBridge>
     </HeadloProviderV2>
   )
 }
+
+// DpopAuthBridge now lives in ./DpopAuthBridge.tsx so it can be shared with
+// other V2 demo routes. See that file for the full pattern + comments.
 
 function AbsTestPageInner() {
   const { isLoaded, isSignedIn, getToken } = useHeadloAuth()
@@ -108,6 +114,132 @@ function AbsTestPageInner() {
     location.reload()
   }
 
+  // ABS Phase A.5.1 — enforcement test. Fires a request against a real
+  // /v1/editor/* endpoint two ways as numbered steps:
+  //   Step 1: Bearer-only    → expects 401 dpop_dpop_missing when flag ON
+  //   Step 2: Bearer + DPoP  → expects 200 (or 403 no_headlo_membership if the
+  //                            user's headlo_auth_sub isn't linked to an agency)
+  //
+  // UI modeled on /admin/api/cap (AdminCapExplorer) — numbered steps with
+  // color-coded status, request/response inline, per-step Run button, copy-
+  // curl option below each step.
+  //
+  // Server-side enforcement plan: claude/headlo-auth-abs-phase-a5-api-enforcement.md
+  const apiUrl = import.meta.env.VITE_HEADLO_API_URL as string
+  const testPath = '/v1/editor/prop/components'
+  const testUrl = apiUrl + testPath
+
+  type StepStatus = 'idle' | 'running' | 'ok' | 'error'
+  interface StepState {
+    status:       StepStatus
+    headers?:     Record<string, string>   // headers actually sent (with masking)
+    response?:    { status: number; body: string }
+    durationMs?:  number
+    proof?:       string                    // populated for step 2 — used for curl copy
+    error?:       string
+  }
+
+  const [steps, setSteps] = React.useState<{ bearer?: StepState; dpop?: StepState }>({})
+  const [runningAll, setRunningAll] = React.useState(false)
+  const [copyState, setCopyState] = React.useState<Record<string, boolean>>({})
+
+  function updateStep(id: 'bearer' | 'dpop', patch: Partial<StepState>) {
+    setSteps(prev => ({ ...prev, [id]: { ...(prev[id] ?? { status: 'idle' }), ...patch } }))
+  }
+
+  function maskToken(t: string): string {
+    return t.length > 30 ? `${t.slice(0, 20)}…${t.slice(-8)}` : t
+  }
+
+  async function runBearer() {
+    updateStep('bearer', { status: 'running', response: undefined, error: undefined })
+    const t0 = Date.now()
+    try {
+      const token = await getToken()
+      if (!token) { updateStep('bearer', { status: 'error', error: 'No access token — sign in first' }); return }
+      const headers = { Authorization: `Bearer ${maskToken(token)}` }
+      const r = await fetch(testUrl, { headers: { Authorization: `Bearer ${token}` } })
+      const body = await r.text()
+      let pretty = body
+      try { pretty = JSON.stringify(JSON.parse(body), null, 2) } catch {}
+      updateStep('bearer', {
+        status: r.ok ? 'ok' : 'error',
+        headers, response: { status: r.status, body: pretty.slice(0, 2000) }, durationMs: Date.now() - t0,
+      })
+    } catch (e) {
+      updateStep('bearer', { status: 'error', error: String(e), durationMs: Date.now() - t0 })
+    }
+  }
+
+  async function runDpop() {
+    updateStep('dpop', { status: 'running', response: undefined, error: undefined })
+    const t0 = Date.now()
+    try {
+      const token = await getToken()
+      if (!token) { updateStep('dpop', { status: 'error', error: 'No access token — sign in first' }); return }
+      const kp = await getExistingKeyPair()
+      if (!kp) { updateStep('dpop', { status: 'error', error: 'No DPoP keypair in IndexedDB — sign in first' }); return }
+      const proof = await signDpopProof(kp, { url: testUrl, method: 'GET' })
+      const headers = {
+        Authorization: `Bearer ${maskToken(token)}`,
+        DPoP:          `${proof.slice(0, 40)}…`,
+      }
+      const r = await fetch(testUrl, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}`, DPoP: proof },
+      })
+      const body = await r.text()
+      let pretty = body
+      try { pretty = JSON.stringify(JSON.parse(body), null, 2) } catch {}
+      updateStep('dpop', {
+        status: r.ok ? 'ok' : 'error',
+        headers, response: { status: r.status, body: pretty.slice(0, 2000) }, durationMs: Date.now() - t0, proof,
+      })
+    } catch (e) {
+      updateStep('dpop', { status: 'error', error: String(e), durationMs: Date.now() - t0 })
+    }
+  }
+
+  async function runAll() {
+    setRunningAll(true)
+    await runBearer()
+    await runDpop()
+    setRunningAll(false)
+  }
+
+  // Build curl commands for a given step. Uses the FULL token from getToken()
+  // and (for the dpop variant) the fresh proof stored in step state after run.
+  async function copyCurl(kind: 'bearer-sh' | 'bearer-ps' | 'dpop-sh' | 'dpop-ps') {
+    try {
+      const token = await getToken()
+      if (!token) return
+      let cmd: string
+      if (kind === 'bearer-sh') {
+        cmd = `curl -i -H "Authorization: Bearer ${token}" \\\n  ${testUrl}`
+      } else if (kind === 'bearer-ps') {
+        cmd = `curl.exe -i -H "Authorization: Bearer ${token}" ${testUrl}`
+      } else {
+        // dpop — need a fresh proof each time (60s validity)
+        const kp = await getExistingKeyPair()
+        if (!kp) return
+        const proof = await signDpopProof(kp, { url: testUrl, method: 'GET' })
+        if (kind === 'dpop-sh') {
+          cmd = `curl -i \\\n  -H "Authorization: Bearer ${token}" \\\n  -H "DPoP: ${proof}" \\\n  ${testUrl}`
+        } else {
+          cmd = `curl.exe -i -H "Authorization: Bearer ${token}" -H "DPoP: ${proof}" ${testUrl}`
+        }
+      }
+      await navigator.clipboard.writeText(cmd)
+      setCopyState(prev => ({ ...prev, [kind]: true }))
+      setTimeout(() => setCopyState(prev => ({ ...prev, [kind]: false })), 1500)
+    } catch { /* ignore */ }
+  }
+
+  const STATUS_ICON: Record<StepStatus, string> = { idle: '○', running: '◌', ok: '●', error: '✗' }
+  const STATUS_COLOR: Record<StepStatus, string> = { idle: '#ccc', running: '#4a6ea8', ok: '#0f6e56', error: '#c0392b' }
+  const statusBg = (n: number) => n === 0 ? '#f5f5f0' : n >= 200 && n < 300 ? '#e6f4ea' : '#fdecea'
+  const statusColor = (n: number) => n === 0 ? '#444' : n >= 200 && n < 300 ? '#1a4a2a' : '#7a1a10'
+
   return (
     <div style={s.page}>
       <div style={s.container}>
@@ -174,6 +306,131 @@ function AbsTestPageInner() {
               Simulates a fresh visitor.
             </div>
           </div>
+        </div>
+
+        <div style={s.card}>
+          <div style={s.cardTitle}>Phase A.5.1 — data-API DPoP enforcement</div>
+          <div style={s.remark}>
+            Two step-runner tests against <code>{testPath}</code>. Flip <code>core.agency.is_dpop_enforced = true</code> on your agency to see step 1 start failing while step 2 keeps passing.
+          </div>
+
+          <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button style={s.btnPrimary} onClick={runAll} disabled={runningAll}>
+              {runningAll ? 'Running sequence…' : 'Run all →'}
+            </button>
+            <button style={s.btnSmall} onClick={() => setSteps({})}>Clear results</button>
+          </div>
+
+          {/* Step 1 — Bearer only */}
+          {(() => {
+            const state = steps.bearer ?? { status: 'idle' as StepStatus }
+            return (
+              <div style={{ ...s.stepSection, borderLeft: `3px solid ${STATUS_COLOR[state.status]}` }}>
+                <div style={s.stepHeader}>
+                  <div style={{ fontSize: 18, color: STATUS_COLOR[state.status], lineHeight: 1, marginTop: 2, flexShrink: 0 }}>{STATUS_ICON[state.status]}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={s.stepTag}>Step 1</div>
+                    <h3 style={s.stepTitle}>Bearer-only request</h3>
+                  </div>
+                  <button style={s.btnSmall} onClick={runBearer} disabled={state.status === 'running'}>
+                    {state.status === 'running' ? 'Running…' : 'Run →'}
+                  </button>
+                </div>
+                <div style={s.stepExplain}>
+                  Fires <code>GET {testPath}</code> with only <code>Authorization: Bearer</code>. When flag OFF: expect 200 (or 403 <code>no_headlo_membership</code>). When flag ON: expect <strong>401 dpop_dpop_missing</strong> — that's enforcement rejecting a DPoP-bound token that arrived without its proof.
+                </div>
+
+                <div style={s.reqLine}>
+                  <span style={{ ...s.methodBadge, background: '#e6f4ea', color: '#1a4a2a' }}>GET</span>
+                  <code style={s.reqPath}>{testUrl}</code>
+                  {state.durationMs !== undefined && <span style={s.duration}>{state.durationMs}ms</span>}
+                </div>
+
+                {state.headers && (
+                  <div style={s.headersBlock}>
+                    {Object.entries(state.headers).map(([k, v]) => (
+                      <div key={k} style={s.headerRow}><span style={s.headerKey}>{k}:</span> <span style={s.headerVal}>{v}</span></div>
+                    ))}
+                  </div>
+                )}
+
+                {state.error && <div style={{ ...s.err, marginTop: 8 }}>{state.error}</div>}
+
+                {state.response && (
+                  <div style={{ marginTop: 10 }}>
+                    <div style={s.respLine}>
+                      <span style={{ ...s.statusBadge, background: statusBg(state.response.status), color: statusColor(state.response.status) }}>
+                        {state.response.status || 'ERR'}
+                      </span>
+                    </div>
+                    <pre style={s.respBody}>{state.response.body}</pre>
+                  </div>
+                )}
+
+                <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <button style={s.btnCurl} onClick={() => copyCurl('bearer-sh')}>{copyState['bearer-sh'] ? '✓ curl (bash)' : 'Copy curl (bash)'}</button>
+                  <button style={s.btnCurl} onClick={() => copyCurl('bearer-ps')}>{copyState['bearer-ps'] ? '✓ curl (PowerShell)' : 'Copy curl (PowerShell)'}</button>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Step 2 — Bearer + DPoP */}
+          {(() => {
+            const state = steps.dpop ?? { status: 'idle' as StepStatus }
+            return (
+              <div style={{ ...s.stepSection, borderLeft: `3px solid ${STATUS_COLOR[state.status]}` }}>
+                <div style={s.stepHeader}>
+                  <div style={{ fontSize: 18, color: STATUS_COLOR[state.status], lineHeight: 1, marginTop: 2, flexShrink: 0 }}>{STATUS_ICON[state.status]}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={s.stepTag}>Step 2</div>
+                    <h3 style={s.stepTitle}>With DPoP proof</h3>
+                  </div>
+                  <button style={s.btnSmall} onClick={runDpop} disabled={state.status === 'running'}>
+                    {state.status === 'running' ? 'Running…' : 'Run →'}
+                  </button>
+                </div>
+                <div style={s.stepExplain}>
+                  Same URL, adds a fresh <code>DPoP:</code> proof signed by the IndexedDB keypair. Middleware validates: proof signature ✓, <code>htu/htm</code> match ✓, <code>iat</code> fresh ✓, <code>jti</code> not replayed ✓, thumbprint matches token's <code>cnf.jkt</code> ✓ — all pass, enforcement satisfied. Expect 200 (or 403 <code>no_headlo_membership</code> if your V2 sub isn't linked).
+                </div>
+
+                <div style={s.reqLine}>
+                  <span style={{ ...s.methodBadge, background: '#e6f4ea', color: '#1a4a2a' }}>GET</span>
+                  <code style={s.reqPath}>{testUrl}</code>
+                  {state.durationMs !== undefined && <span style={s.duration}>{state.durationMs}ms</span>}
+                </div>
+
+                {state.headers && (
+                  <div style={s.headersBlock}>
+                    {Object.entries(state.headers).map(([k, v]) => (
+                      <div key={k} style={s.headerRow}><span style={s.headerKey}>{k}:</span> <span style={s.headerVal}>{v}</span></div>
+                    ))}
+                  </div>
+                )}
+
+                {state.error && <div style={{ ...s.err, marginTop: 8 }}>{state.error}</div>}
+
+                {state.response && (
+                  <div style={{ marginTop: 10 }}>
+                    <div style={s.respLine}>
+                      <span style={{ ...s.statusBadge, background: statusBg(state.response.status), color: statusColor(state.response.status) }}>
+                        {state.response.status || 'ERR'}
+                      </span>
+                    </div>
+                    <pre style={s.respBody}>{state.response.body}</pre>
+                  </div>
+                )}
+
+                <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <button style={s.btnCurl} onClick={() => copyCurl('dpop-sh')}>{copyState['dpop-sh'] ? '✓ curl (bash)' : 'Copy curl (bash)'}</button>
+                  <button style={s.btnCurl} onClick={() => copyCurl('dpop-ps')}>{copyState['dpop-ps'] ? '✓ curl (PowerShell)' : 'Copy curl (PowerShell)'}</button>
+                  <span style={{ ...s.remark, marginTop: 0, marginLeft: 4, fontStyle: 'normal' }}>
+                    curl copy generates a fresh DPoP proof at click time (60s validity).
+                  </span>
+                </div>
+              </div>
+            )
+          })()}
         </div>
 
         <PersistedLogViewer />
@@ -290,4 +547,25 @@ const s = {
   logTs:     { color: '#7c7a72', flexShrink: 0, minWidth: 90 } as React.CSSProperties,
   logMsg:    { color: '#e8e5df', flexShrink: 0 } as React.CSSProperties,
   logData:   { color: '#7c3aed', opacity: 0.9, wordBreak: 'break-all' as const } as React.CSSProperties,
+  curlLabel: { fontSize: 12, color: '#5a5a55', marginBottom: 8 } as React.CSSProperties,
+  curlBlockRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 4 } as React.CSSProperties,
+  curlBlockTag: { fontSize: 10, fontWeight: 700, color: '#8a8a80', textTransform: 'uppercase' as const, letterSpacing: '.06em' } as React.CSSProperties,
+  // Step-runner styles — mirror /admin/api/cap (AdminCapExplorer)
+  stepSection: { background: '#fdfcf8', border: '1px solid #f0ede5', borderRadius: 8, padding: '14px 16px 12px', marginTop: 14 } as React.CSSProperties,
+  stepHeader:  { display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 } as React.CSSProperties,
+  stepTag:     { fontSize: 10, fontWeight: 700, color: '#aaa', letterSpacing: '.06em', textTransform: 'uppercase' as const } as React.CSSProperties,
+  stepTitle:   { fontSize: 14, fontWeight: 700, margin: '2px 0 0', color: '#1a1a18' } as React.CSSProperties,
+  stepExplain: { fontSize: 12, color: '#5a5a55', lineHeight: 1.55, marginBottom: 10 } as React.CSSProperties,
+  reqLine:     { display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 } as React.CSSProperties,
+  methodBadge: { fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4 } as React.CSSProperties,
+  reqPath:     { fontSize: 12, fontFamily: '"DM Mono", monospace', color: '#555', wordBreak: 'break-all' as const } as React.CSSProperties,
+  duration:    { fontSize: 11, color: '#aaa', marginLeft: 'auto' as const } as React.CSSProperties,
+  headersBlock:{ background: '#faf9f6', border: '1px solid #f0ede5', borderRadius: 4, padding: '6px 10px', marginTop: 6 } as React.CSSProperties,
+  headerRow:   { fontSize: 11, fontFamily: '"DM Mono", monospace', color: '#5a5a55', padding: '1px 0', wordBreak: 'break-all' as const } as React.CSSProperties,
+  headerKey:   { color: '#8a8a80' } as React.CSSProperties,
+  headerVal:   { color: '#1a1a18' } as React.CSSProperties,
+  respLine:    { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 } as React.CSSProperties,
+  statusBadge: { fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6 } as React.CSSProperties,
+  respBody:    { background: '#111', color: '#e8e8e8', borderRadius: 8, padding: '10px 12px', fontSize: 11, overflowX: 'auto' as const, whiteSpace: 'pre-wrap' as const, wordBreak: 'break-word' as const, margin: 0, lineHeight: 1.5, maxHeight: 320, fontFamily: '"DM Mono", monospace' } as React.CSSProperties,
+  btnCurl:     { background: '#f5f2eb', color: '#1a1a18', border: 'none', borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' } as React.CSSProperties,
 }
