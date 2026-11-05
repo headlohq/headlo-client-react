@@ -1,5 +1,5 @@
 import React from 'react'
-import { useAuth, useUser, SignInButton, SignOutButton } from 'headlo-auth'
+import { useAuth, useHeadloUser as useUser, SignInButton, SignOutButton } from 'headlo-auth'
 
 export default function AuthCard() {
   const { isLoaded, isSignedIn, getToken } = useAuth()

@@ -1,4 +1,4 @@
-import { useAuth, useUser } from 'headlo-auth'
+import { useAuth, useHeadloUser as useUser } from 'headlo-auth'
 
 export default function Landing() {
   const { isLoaded, isSignedIn } = useAuth()
@@ -81,60 +81,90 @@ export default function Landing() {
         </section>
 
         <div style={s.testLink}>
-          <a href="/test" style={s.testLinkAnchor}>
-            → Open the test page to inspect tokens, components, and the PROP service
+          {/* ── V2 auth (DPoP + cookie-less) — the new stack ─────────── */}
+          <div style={s.groupLabel}>V2 auth · DPoP + cookie-less</div>
+          <div style={s.groupSub}>Debug harnesses</div>
+          <a href="/abs-test" style={{ ...s.testLinkAnchor, display: 'inline-block', fontWeight: 700 }}>
+            → ABS Phase A test (HeadloProviderV2 + DPoP + A.5.1 enforcement step runner)
           </a>
           <br />
-          <a href="/demo/cms-components" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
-            → CMS components demo (useCmsComponents with anon key)
+          <a href="/view/askwidget?version=v2" style={{ ...s.testLinkAnchor, marginTop: 8, display: 'inline-block', fontWeight: 700 }}>
+            → Ask Widget v2 (scope-token exchange loop — verifies /v1/scope/test end-to-end)
           </a>
           <br />
-          <a href="/demo/auth-v2/cms-components" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
-            → CMS components demo — V2 (HeadloProviderV2 + DPoP end-to-end)
+          <a href="/services-debug" style={{ ...s.testLinkAnchor, marginTop: 8, display: 'inline-block', fontWeight: 700 }}>
+            → Services debug (headlo-connect + headlo-credits PROP services)
           </a>
           <br />
-          <a href="/demo/prop-components" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
-            → PROP components demo (usePropComponents with anon key)
+          <a href="/scope-data-test" style={{ ...s.testLinkAnchor, marginTop: 8, display: 'inline-block', fontWeight: 700 }}>
+            → Scope data endpoints (user profile · records · collections)
           </a>
           <br />
-          <a href="/view/askwidget" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
-            → Ask Widget view (drop-in <code style={s.code}>&lt;headlo-ask-widget&gt;</code> custom element)
+          <a href="/pricing-debug" style={{ ...s.testLinkAnchor, marginTop: 8, display: 'inline-block', fontWeight: 700 }}>
+            → Pricing debug ({'<headlo-pricing-table>'} — embedded widget loads headlo-auth:v2)
           </a>
-          <br />
-          <a href="/view/askchat" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
-            → Ask Chat view (migrated <code style={s.code}>&lt;headlo-ask-chat&gt;</code> — action-binding to <code style={s.code}>headlo-ask-chat:v1</code> service)
-          </a>
-          <br />
-          <a href="/askchat-vanilla-local.html" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
-            → Ask Chat vanilla — LOCAL (no framework, 3 script tags, points at <code style={s.code}>127.0.0.1:8787</code>)
-          </a>
-          <br />
-          <a href="/askchat-vanilla.html" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
-            → Ask Chat vanilla — PROD (same page, points at <code style={s.code}>api.headlo.com</code>)
-          </a>
-          <br />
-          <a href="/view/cap-expert-widget" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
-            → Cap Expert widget view — v2 auth (drop-in <code style={s.code}>&lt;cap-expert-widget&gt;</code> — walks buyer through a CAP protocol; auth via <code style={s.code}>headlo-auth:v2</code> PROP service with DPoP. Sign in at <code style={s.code}>/demo/prop-auth-v2</code> first.)
-          </a>
-          <br />
-          <a href="/view/cap-expert-widget?service=cap-expert:v3" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
-            → Cap Expert widget view — v3 (configured CAP: same widget, but <code style={s.code}>cap-expert:v3</code> reads capId from the dashboard's config field, not the ask arg. Runtime override toggle in the header.)
-          </a>
-          <br />
-          <a href="/demo/askwidget" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
-            → Ask Widget demo (React-side integration + attribute controls)
-          </a>
-          <br />
-          <a href="/demo/auth-v2/askwidget" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
+
+          <div style={{ ...s.groupSub, marginTop: 16 }}>Demos</div>
+          <a href="/demo/auth-v2/askwidget" style={{ ...s.testLinkAnchor, display: 'inline-block' }}>
             → Ask Widget demo — V2 (HeadloProviderV2 + DPoP, personalizes widget with signed-in user)
           </a>
           <br />
-          <a href="/demo/prop-auth-v2" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
-            → PROP Auth v2 demo (framework-agnostic — no React provider, drives auth via <code style={s.code}>window.__headlo_service_headlo_auth_v2</code>)
+          <a href="/demo/auth-v2/cms-components" style={{ ...s.testLinkAnchor, marginTop: 8, display: 'inline-block' }}>
+            → CMS components demo — V2 (HeadloProviderV2 + DPoP end-to-end)
           </a>
           <br />
-          <a href="/abs-test" style={{ ...s.testLinkAnchor, marginTop: 12, display: 'inline-block' }}>
-            → ABS Phase A test (HeadloProviderV2 + DPoP + A.5.1 enforcement step runner)
+          <a href="/demo/prop-auth-v2" style={{ ...s.testLinkAnchor, marginTop: 8, display: 'inline-block' }}>
+            → PROP Auth v2 demo (framework-agnostic — no React provider, drives auth via <code style={s.code}>window.__headlo_service_headlo_auth_v2</code>)
+          </a>
+
+          <div style={{ ...s.groupSub, marginTop: 16 }}>Widgets that consume v2 auth</div>
+          <a href="/view/cap-expert-widget" style={{ ...s.testLinkAnchor, display: 'inline-block' }}>
+            → Cap Expert widget view — v2 auth (drop-in <code style={s.code}>&lt;cap-expert-widget&gt;</code> — walks buyer through a CAP protocol; auth via <code style={s.code}>headlo-auth:v2</code> PROP service with DPoP. Sign in at <code style={s.code}>/demo/prop-auth-v2</code> first.)
+          </a>
+          <br />
+          <a href="/view/cap-expert-widget?service=cap-expert:v3" style={{ ...s.testLinkAnchor, marginTop: 8, display: 'inline-block' }}>
+            → Cap Expert widget view — v3 (configured CAP: same widget, but <code style={s.code}>cap-expert:v3</code> reads capId from the dashboard's config field, not the ask arg)
+          </a>
+
+          {/* ── Anon / no auth — public read + pk-only smoke tests ─────── */}
+          <div style={{ ...s.groupLabel, marginTop: 28 }}>Anon · no user auth</div>
+          <div style={s.groupSub}>Smoke tests + widget views</div>
+          <a href="/scope-test" style={{ ...s.testLinkAnchor, display: 'inline-block', fontWeight: 700 }}>
+            → Scope enforcement smoke test (POST /v1/prop/token/exchange → requireScope end-to-end)
+          </a>
+          <br />
+          <a href="/test" style={{ ...s.testLinkAnchor, marginTop: 8, display: 'inline-block' }}>
+            → Open the test page to inspect tokens, components, and the PROP service
+          </a>
+          <br />
+          <a href="/demo/cms-components" style={{ ...s.testLinkAnchor, marginTop: 8, display: 'inline-block' }}>
+            → CMS components demo (useCmsComponents with anon key)
+          </a>
+          <br />
+          <a href="/demo/prop-components" style={{ ...s.testLinkAnchor, marginTop: 8, display: 'inline-block' }}>
+            → PROP components demo (usePropComponents with anon key)
+          </a>
+          <br />
+          <a href="/demo/askwidget" style={{ ...s.testLinkAnchor, marginTop: 8, display: 'inline-block' }}>
+            → Ask Widget demo (React-side integration + attribute controls)
+          </a>
+          <br />
+          <a href="/view/askwidget" style={{ ...s.testLinkAnchor, marginTop: 8, display: 'inline-block' }}>
+            → Ask Widget view (drop-in <code style={s.code}>&lt;headlo-ask-widget&gt;</code> custom element)
+          </a>
+          <br />
+          <a href="/view/askchat" style={{ ...s.testLinkAnchor, marginTop: 8, display: 'inline-block' }}>
+            → Ask Chat view (migrated <code style={s.code}>&lt;headlo-ask-chat&gt;</code> — action-binding to <code style={s.code}>headlo-ask-chat:v1</code> service)
+          </a>
+
+          {/* ── Vanilla HTML — no framework, just script tags ─────────── */}
+          <div style={{ ...s.groupLabel, marginTop: 28 }}>Vanilla · no framework</div>
+          <a href="/askchat-vanilla-local.html" style={{ ...s.testLinkAnchor, display: 'inline-block' }}>
+            → Ask Chat vanilla — LOCAL (3 script tags, points at <code style={s.code}>127.0.0.1:8787</code>)
+          </a>
+          <br />
+          <a href="/askchat-vanilla.html" style={{ ...s.testLinkAnchor, marginTop: 8, display: 'inline-block' }}>
+            → Ask Chat vanilla — PROD (same page, points at <code style={s.code}>api.headlo.com</code>)
           </a>
         </div>
       </main>
@@ -310,13 +340,36 @@ const s = {
   } as React.CSSProperties,
   testLink: {
     marginTop:  40,
-    textAlign:  'center' as const,
+    textAlign:  'left' as const,
+    maxWidth:   720,
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    padding:    '0 24px',
   } as React.CSSProperties,
   testLinkAnchor: {
     fontSize:       13,
     color:          '#2a6a3a',
     textDecoration: 'none',
     borderBottom:   '1px dotted #2a6a3a',
+  } as React.CSSProperties,
+  groupLabel: {
+    fontSize:       11,
+    fontWeight:     700,
+    letterSpacing:  '0.12em',
+    textTransform:  'uppercase' as const,
+    color:          '#1a1a18',
+    marginBottom:   6,
+    paddingBottom:  6,
+    borderBottom:   '2px solid #1a1a18',
+  } as React.CSSProperties,
+  groupSub: {
+    fontSize:       10,
+    fontWeight:     600,
+    letterSpacing:  '0.08em',
+    textTransform:  'uppercase' as const,
+    color:          '#8a8a80',
+    marginBottom:   6,
+    marginTop:      12,
   } as React.CSSProperties,
   footer: {
     borderTop:   '1px solid #e8e5df',

@@ -1,4 +1,4 @@
-import { useAuth, useUser, SignOutButton } from 'headlo-auth'
+import { useAuth, useHeadloUser as useUser, SignOutButton } from 'headlo-auth'
 import React from 'react'
 
 export default function Dashboard() {

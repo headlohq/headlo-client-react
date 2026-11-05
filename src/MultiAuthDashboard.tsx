@@ -1,4 +1,4 @@
-import { useAuth as useHeadloAuth, useUser as useHeadloUser, SignOutButton as HeadloSignOut } from 'headlo-auth'
+import { useAuth as useHeadloAuth, useHeadloUser, SignOutButton as HeadloSignOut } from 'headlo-auth'
 import { useAuth as useClerkAuth, useUser as useClerkUser, SignOutButton as ClerkSignOut } from '@clerk/clerk-react'
 import React from 'react'
 

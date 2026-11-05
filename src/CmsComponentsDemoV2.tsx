@@ -1,6 +1,6 @@
 import React from 'react'
 import { useCmsComponents } from 'headlo-react'
-import { HeadloProviderV2, useHeadloAuth, useUser, SignInButton, SignOutButton, SignedIn, SignedOut } from 'headlo-auth'
+import { HeadloProviderV2, useHeadloAuth, useHeadloUser as useUser, SignInButton, SignOutButton, SignedIn, SignedOut } from 'headlo-auth'
 import { HeadloAuthContext } from 'headlo-react'
 import { DpopAuthBridge } from './DpopAuthBridge'
 

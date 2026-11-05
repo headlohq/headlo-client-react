@@ -33,12 +33,15 @@ export default function CapExpertView() {
   const publishableKey = import.meta.env.VITE_HEADLO_PUBLISHABLE_KEY as string | undefined
   const apiUrl         = import.meta.env.VITE_HEADLO_API_URL         as string | undefined
 
-  const capId      = params.get('capId')   ?? '89ac1e46060d'
-  // Default to v2 — routes through headlo-auth:v2 authFetch so the widget
-  // works for any signed-in user (sign in at /demo/prop-auth-v2 first).
-  // v1 is available via ?service=cap-expert:v1 for the legacy editor-JWT
-  // path used inside the dashboard.
-  const serviceRef = params.get('service') ?? 'cap-expert:v2'
+  const capId      = params.get('capId')
+    ?? (import.meta.env.VITE_HEADLO_DEFAULT_CAP_ID as string | undefined)
+    ?? '89ac1e46060d'
+  // Default to v5 — hybrid auth. Signed-in visitors go through V2 authFetch
+  // (personalized); anonymous visitors reach the tool via the anon-pk path
+  // (publishable key + X-Headlo-Service header, no sign-in required). Zero
+  // friction to first message. Earlier versions still selectable via
+  // ?service=cap-expert:v[1-4].
+  const serviceRef = params.get('service') ?? 'cap-expert:v5'
   const onAskAttr  = `${serviceRef}:ask`
 
   // Runtime capId override for cap-expert:v3. v3 reads its capId from
@@ -70,8 +73,8 @@ export default function CapExpertView() {
   if (overrideCapId) {
     const w = window as unknown as Record<string, Record<string, Record<string, string>>>
     if (!w.__headlo_service_config) w.__headlo_service_config = {}
-    if (!w.__headlo_service_config['cap-expert:v3']) w.__headlo_service_config['cap-expert:v3'] = {}
-    w.__headlo_service_config['cap-expert:v3'].capId = overrideCapId
+    if (!w.__headlo_service_config[serviceRef]) w.__headlo_service_config[serviceRef] = {}
+    w.__headlo_service_config[serviceRef].capId = overrideCapId
   }
   if (overridePk) {
     (window as unknown as Record<string, string>).__headlo_prop_key = overridePk
@@ -101,6 +104,31 @@ export default function CapExpertView() {
           {overrideCapId && <span style={{ ...s.serviceBadge, background: '#f59e0b' }}>capId: {overrideCapId}</span>}
         </span>
         <span style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {/* Effective capId = override wins over URL param. Both links use it
+             so what you see in the widget matches what you inspect / edit. */}
+          {(() => {
+            const effectiveCapId = overrideCapId || capId
+            return (
+              <>
+                <a
+                  href={`${(import.meta.env.VITE_HEADLO_APP_URL as string | undefined ?? 'http://localhost:5173').replace(/\/$/, '')}/plugin/expert/cap/${effectiveCapId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={s.versionLink}
+                  title="Open the CAP in the expert editor (headlo-app)"
+                >
+                  edit CAP ↗
+                </a>
+                <a
+                  href={`/cap-json?cap_id=${effectiveCapId}`}
+                  style={s.versionLink}
+                  title="Inspect the raw CAP JSON returned by GET /v1/plugin/cap/:cap_id"
+                >
+                  json
+                </a>
+              </>
+            )
+          })()}
           <a href="/view/askchat" style={s.versionLink}>askchat</a>
         </span>
       </header>
@@ -137,11 +165,11 @@ export default function CapExpertView() {
           />
         )}
 
-        {/* capId override — only meaningful when service=cap-expert:v3
-           since v3 reads window.__headlo_service_config['cap-expert:v3'].capId.
+        {/* capId override — only meaningful when service=cap-expert:v3/v4/v5
+           since these read window.__headlo_service_config['cap-expert:vN'].capId.
            For v1/v2 the widget passes capId as an ask arg, so this override
            does nothing. */}
-        {serviceRef === 'cap-expert:v3' && (
+        {(serviceRef === 'cap-expert:v3' || serviceRef === 'cap-expert:v4' || serviceRef === 'cap-expert:v5') && (
           <>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', marginLeft: 12 }}>
               <input

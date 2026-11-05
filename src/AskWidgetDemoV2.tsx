@@ -1,5 +1,5 @@
 import React from 'react'
-import { HeadloProviderV2, useHeadloAuth, useUser, SignInButton, SignOutButton, SignedIn, SignedOut } from 'headlo-auth'
+import { HeadloProviderV2, useHeadloAuth, useHeadloUser as useUser, SignInButton, SignOutButton, SignedIn, SignedOut } from 'headlo-auth'
 import { DpopAuthBridge } from './DpopAuthBridge'
 import { HardcodedAskWidget, CustomElementAskWidget } from './AskWidgetDemo'
 

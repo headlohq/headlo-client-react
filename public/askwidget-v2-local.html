@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ask Widget v2 — Vanilla HTML (local)</title>
+
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #faf9f6; color: #1a1a18; margin: 0; padding: 24px; }
+    header { max-width: 720px; margin: 0 auto 24px; }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    p  { color: #6b6a62; font-size: 14px; line-height: 1.6; margin: 0 0 8px; }
+    code { background: #f5f2eb; padding: 2px 6px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 12px; }
+    .config { max-width: 720px; margin: 0 auto 16px; padding: 12px 16px; background: #e6f4ea; border: 1px solid #b6d8c0; border-radius: 6px; font-size: 12px; color: #1a4a2a; }
+    .widget-wrap { max-width: 720px; margin: 0 auto; }
+    .fine { max-width: 720px; margin: 24px auto 0; font-size: 11px; color: #8a8a80; text-align: center; }
+    .fine a { color: #8a8a80; }
+  </style>
+
+  <!--
+    LOCAL DEV embed for <headlo-ask-widget> v2. Zero framework — just three
+    <script> tags and a custom-element tag. Everything runs against the local
+    worker on http://127.0.0.1:8787 so any Save in the dashboard editor
+    surfaces on hard-refresh here.
+
+    Sibling to /view/askwidget?version=v2 (React SPA). This page proves the
+    widget bundle works with no React runtime, no PropServer, no useComponent
+    hook — same rendered output as the SPA version, dramatically less
+    machinery. Use it to isolate whether a bug is in the widget itself vs.
+    in the surrounding React harness.
+  -->
+
+  <!-- 1. React 19 UMD runtime — served by the local worker. Widgets are
+       compiled against React so the runtime has to be present in the global
+       scope before the widget bundle executes. -->
+  <script src="http://127.0.0.1:8787/v1/prop/dist/react/19/bundle"></script>
+
+  <!-- 2. Runtime config — the widget reads these two globals at mount time
+       so it knows which publishable key to authorize with and which API to
+       call. The <headlo-init> custom element is an equivalent alternative
+       for pages that prefer HTML-declared config. -->
+  <script>
+    window.__headlo_api_url  = 'http://127.0.0.1:8787'
+    window.__headlo_prop_key = 'pk_live_0354230fccbb4168b4725f7a7819e2b1'
+  </script>
+
+  <!-- 3. Widget bundle from the local worker. The ?t= cache-buster forces
+       the browser to re-fetch after every Save; drop it in production. -->
+  <script src="http://127.0.0.1:8787/v1/prop/component/headlo-ask-widget/v2/bundle?t=1789612893753"></script>
+</head>
+<body>
+
+  <header>
+    <h1>Ask Widget v2 — vanilla HTML (LOCAL DEV)</h1>
+    <p>
+      Zero-framework embed of <code>&lt;headlo-ask-widget&gt;</code> pointed
+      at <code>http://127.0.0.1:8787</code>. Use this to iterate on the widget
+      bundle without deploying — any Save in
+      <code>/dashboard/prop/components/headlo-ask-widget</code> against the
+      local worker will surface here on hard-refresh (or Ctrl+F5 to bust
+      browser cache).
+    </p>
+    <p>
+      Sibling to
+      <a href="/view/askwidget?version=v2"><code>/view/askwidget?version=v2</code></a>
+      (React SPA). Same widget, no React harness.
+    </p>
+  </header>
+
+  <div class="config">
+    ✓ Loading v2 bundle from <code>127.0.0.1:8787</code> ·
+    pk <code>pk_live_0354230…f7a7819e2b1</code> ·
+    cache-buster <code>?t=1789612893753</code>
+  </div>
+
+  <div class="widget-wrap">
+    <!--
+      No attributes passed here on purpose — widget uses its baked-in
+      defaults from attributes-raw.json. Add any of these to override:
+        display-name="…"
+        tagline="…"
+        accent-color="#c51b8f"
+        placeholder="…"
+        knowledge-scope="…"
+    -->
+    <headlo-ask-widget></headlo-ask-widget>
+  </div>
+
+  <p class="fine">
+    Not seeing changes? Hard-refresh with Ctrl+F5, or bump the
+    <code>?t=</code> value in the widget-bundle script tag above.
+  </p>
+
+</body>
+</html>

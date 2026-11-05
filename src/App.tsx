@@ -11,6 +11,8 @@ import AskWidgetDemo from './AskWidgetDemo'
 import AskWidgetView from './AskWidgetView'
 import AskChatView   from './AskChatView'
 import CapExpertView from './CapExpertView'
+import PricingDebugView from './PricingDebugView'
+import ServicesDebugView from './ServicesDebugView'
 import CmsComponentsDemo from './CmsComponentsDemo'
 import CmsComponentsDemoV2 from './CmsComponentsDemoV2'
 import AskWidgetDemoV2 from './AskWidgetDemoV2'
@@ -22,6 +24,9 @@ import MultiAuthOnboarding from './MultiAuthOnboarding'
 import AbsSpikePage from './AbsSpikePage'
 import AbsTestPage from './AbsTestPage'
 import PropAuthV2Demo from './PropAuthV2Demo'
+import ScopeTestPage from './ScopeTestPage'
+import ScopeDataTestPage from './ScopeDataTestPage'
+import CapJsonView from './CapJsonView'
 
 const authIssuer     = import.meta.env.VITE_HEADLO_AUTH_ISSUER     as string
 const publishableKey = import.meta.env.VITE_HEADLO_PUBLISHABLE_KEY as string
@@ -43,6 +48,17 @@ export default function App() {
   // Bypasses the root <HeadloProviderV1> v1 so the two providers don't conflict.
   // Test flow + spec in claude/headlo-auth-abs-phase0-spec.md.
   if (path.startsWith('/abs-test')) return <AbsTestPage />
+
+  // Scope enforcement smoke test — verifies the token-exchange → verify → requireScope loop.
+  // See claude/headlo-widget-scope-enforcement.md § 4 Steps 1-6.
+  // ORDER MATTERS: /scope-data-test must match before /scope-test since both
+  // paths start with `/scope-`.
+  if (path.startsWith('/scope-data-test')) return <ScopeDataTestPage />
+  if (path.startsWith('/scope-test'))      return <ScopeTestPage />
+
+  // CAP JSON inspector — GET /v1/plugin/cap/:cap_id with Clerk auth. Uses
+  // ClerkProvider from main.tsx directly, no headlo-auth surface needed.
+  if (path.startsWith('/cap-json')) return <CapJsonView />
 
   // PROP-service-only v2 demo — no React provider, entire auth surface driven
   // by window.__headlo_service_headlo_auth_v2 loaded via <script>. Proves the
@@ -151,6 +167,8 @@ function HeadloRouter() {
   if (path.startsWith('/view/askwidget'))         return <AskWidgetView />
   if (path.startsWith('/view/askchat'))           return <AskChatView />
   if (path.startsWith('/view/cap-expert-widget')) return <CapExpertView />
+  if (path.startsWith('/pricing-debug'))          return <PricingDebugView />
+  if (path.startsWith('/services-debug'))         return <ServicesDebugView />
   return <Landing />
 }
 

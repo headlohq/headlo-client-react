@@ -15,6 +15,25 @@ REM   If the SDK dists are stale, the client-react bundle is stale too and
 REM   Cloudflare Pages emits "Uploaded 0 files (N already uploaded)" — meaning
 REM   the deploy is a no-op because the hashed bundle is identical to last time.
 REM
-REM Run from this directory (headlo-client-react).
+REM Runs in the current cmd window so Ctrl+C actually kills the whole tree.
+REM Previous version used `start cmd /k` which spawned a detached window and
+REM left zombie node/npm processes when interrupted.
 
-start cmd /k "cd /d D:\headlo\headlo-repo\headlo-client-react && echo === Rebuilding headlo-auth SDK... && call npm run build --prefix ..\headlo-auth && echo === Rebuilding headlo-sdk + headlo-react... && call npm run build --prefix ..\headlo-sdk && call npm run build --prefix ..\headlo-react && echo === Building headlo-client-react... && call npm run build && echo === Deploying to Cloudflare Pages (production)... && npx wrangler pages deploy dist --project-name=headlo-client-react --branch=main --commit-dirty=true"
+cd /d D:\headlo\headlo-repo\headlo-client-react || exit /b 1
+
+echo === Rebuilding headlo-auth SDK...
+call npm run build --prefix ..\headlo-auth || exit /b 1
+
+echo === Rebuilding headlo-sdk + headlo-react...
+call npm run build --prefix ..\headlo-sdk || exit /b 1
+call npm run build --prefix ..\headlo-react || exit /b 1
+
+echo === Building headlo-client-react...
+call npm run build || exit /b 1
+
+echo === Deploying to Cloudflare Pages (production)...
+call node_modules\.bin\wrangler pages deploy dist --project-name=headlo-client-react --branch=main --commit-dirty=true || exit /b 1
+
+echo.
+echo Deploy to prod complete.
+pause

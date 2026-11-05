@@ -35,6 +35,16 @@ interface CapExpertWidgetProps {
   'on-ask'?: string
 }
 
+// Headlo-pricing-table — Wave 11 drop-in pricing page. Auto-fetches active
+// plans for the pk's agency, opens Stripe Checkout on merchant Connect
+// account when a buyer clicks Subscribe.
+interface HeadloPricingTableProps {
+  'prop-key'?:                      string
+  'new-subscription-redirect-url'?: string
+  'cancel-redirect-url'?:           string
+  layout?:                          'default' | 'compact'
+}
+
 // Headlo-init — declarative config setter. Sets window.__headlo_prop_key +
 // window.__headlo_api_url from these attributes so downstream widgets on
 // the same page share one publishable key + one API base URL.
@@ -64,6 +74,7 @@ declare module 'react' {
       'cap-expert-widget':     CapExpertWidgetProps
       'headlo-init':           HeadloInitProps
       'headlo-service-config': HeadloServiceConfigProps
+      'headlo-pricing-table':  HeadloPricingTableProps
     }
   }
 }
